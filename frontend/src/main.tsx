@@ -5,8 +5,15 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App.tsx'
 import Storefront from './pages/Storefront.tsx'
-import AdminDashboard from './pages/AdminDashboard.tsx'
+import AdminDashboard from './pages/admin/AdminDashboard.tsx'
+import ProductsPage from './pages/admin/ProductsPage.tsx'
 import AdminLogin from './pages/AdminLogin.tsx'
+import ProtectedRoute from './components/ProtectedRoute.tsx'
+import AdminLayout from './pages/admin/AdminLayout.tsx'
+import CategoriesPage from './pages/admin/CategoriesPage.tsx'
+import OrdersPage from './pages/admin/OrdersPage.tsx'
+import CartPage from './pages/CartPage.tsx'
+import SettingsPage from './pages/admin/SettingsPage.tsx'
 
 const router = createBrowserRouter([
   {
@@ -14,7 +21,24 @@ const router = createBrowserRouter([
     element: <App />,
     children: [
       { index: true, element: <Storefront /> },
-      { path: 'admin', element: <AdminDashboard /> },
+      { path: 'cart', element: <CartPage /> },
+      {
+        path: 'admin',
+        element: <ProtectedRoute />,
+        children: [
+          {
+            path: '',
+            element: <AdminLayout />,
+            children: [
+              { index: true, element: <AdminDashboard /> },
+              { path: 'products', element: <ProductsPage /> },
+              { path: 'categories', element: <CategoriesPage /> },
+              { path: 'orders', element: <OrdersPage /> },
+              { path: 'settings', element: <SettingsPage /> },
+            ]
+          }
+        ]
+      },
       { path: 'admin/login', element: <AdminLogin /> },
     ],
   },
