@@ -1,0 +1,25 @@
+# This is the configuration file for Cloudflare Pages and Workers.
+# You can use this to deploy your application using the `npx wrangler deploy` command.
+
+# The name of your application in Cloudflare.
+name = "az"
+
+# Specifies the directory where the built static assets will be located.
+# For Vite projects, this is typically the "dist" directory.
+pages_build_output_dir = "dist"
+
+# --- Build Configuration ---
+# These settings tell Cloudflare how to build your project.
+[build]
+# The command to execute to build your project.
+command = "npm run build"
+# The directory to watch for changes in.
+watch_dir = "src"
+
+# --- Environment Variables ---
+# Use this section to define environment variables for your application.
+# This is where you connect the frontend to your backend API.
+[vars]
+# IMPORTANT: You must replace the placeholder value with the public URL
+# of your deployed backend service.
+VITE_API_BASE_URL = "https://your-backend-api-url.com"
