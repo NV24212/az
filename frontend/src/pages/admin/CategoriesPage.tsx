@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getAdminCategories, deleteCategory, Category } from '../../lib/api';
+import type { Category } from '../../lib/api';
+import { getAdminCategories, deleteCategory } from '../../lib/api';
 import CategoryFormModal from '../../components/CategoryFormModal';
 
 export default function CategoriesPage() {

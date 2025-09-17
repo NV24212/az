@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Product, Category, createProduct, updateProduct } from '../lib/api';
+import type { Product, Category } from '../lib/api';
+import { createProduct, updateProduct } from '../lib/api';
 
 interface ProductFormModalProps {
   isOpen: boolean;
