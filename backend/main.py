@@ -1,12 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import router as api_router
+from app.api import router as api_router, admin_router
+from app.config import settings
 
 app = FastAPI(title="AzharStore API", version="0.1.0")
 
+origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(',')]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -21,3 +24,4 @@ async def health():
     return {"status": "healthy"}
 
 app.include_router(api_router)
+app.include_router(admin_router)
