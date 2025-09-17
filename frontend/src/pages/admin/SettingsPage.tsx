@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getAdminSettings, updateAdminSettings, StoreSettings } from '../../lib/api';
+import type { StoreSettings } from '../../lib/api';
+import { getAdminSettings, updateAdminSettings } from '../../lib/api';
 import { useEffect, useState } from 'react';
 
 export default function SettingsPage() {

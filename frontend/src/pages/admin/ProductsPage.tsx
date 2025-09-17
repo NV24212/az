@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getAdminProducts, getAdminCategories, deleteProduct, Product } from '../../lib/api';
+import type { Product } from '../../lib/api';
+import { getAdminProducts, getAdminCategories, deleteProduct } from '../../lib/api';
 import ProductFormModal from '../../components/ProductFormModal';
 
 export default function ProductsPage() {

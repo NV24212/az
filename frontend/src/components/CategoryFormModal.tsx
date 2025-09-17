@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Category, createCategory, updateCategory } from '../lib/api';
+import type { Category } from '../lib/api';
+import { createCategory, updateCategory } from '../lib/api';
 
 interface CategoryFormModalProps {
   isOpen: boolean;

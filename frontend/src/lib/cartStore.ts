@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Product } from './api';
+import type { Product } from './api';
 
 interface CartItem {
   product: Product;

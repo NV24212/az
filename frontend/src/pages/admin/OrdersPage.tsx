@@ -1,10 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getAdminOrders, updateOrderStatus, deleteOrder, OrderStatus, Order } from '../../lib/api';
+import type { Order, OrderStatus } from '../../lib/api';
+import { getAdminOrders, updateOrderStatus, deleteOrder } from '../../lib/api';
 
 export default function OrdersPage() {
   const queryClient = useQueryClient();
 
-  const { data: orders, isLoading, isError, error } = useQuery({
+  const { data: orders, isLoading, isError, error } = useQuery<Order[]>({
     queryKey: ['adminOrders'],
     queryFn: getAdminOrders,
   });
