@@ -81,20 +81,20 @@ CREATE TABLE IF NOT EXISTS StoreSettings (
 );
 
 -- Insert a default settings row if one doesn't exist
-INSERT INTO StoreSettings (id, adminEmail)
+INSERT INTO StoreSettings ("id", "adminEmail")
 SELECT 1, 'admin@example.com'
-WHERE NOT EXISTS (SELECT 1 FROM StoreSettings WHERE id = 1);
+WHERE NOT EXISTS (SELECT 1 FROM StoreSettings WHERE "id" = 1);
 
 -- Seed Data for Categories for initial setup
-INSERT INTO Category (name) VALUES
+INSERT INTO Category ("name") VALUES
 ('Electronics'),
 ('Books'),
 ('Clothing'),
 ('Home & Kitchen')
-ON CONFLICT (name) DO NOTHING;
+ON CONFLICT ("name") DO NOTHING;
 
 -- Seed Data for Products for initial setup
-INSERT INTO Product (name, description, price, stockQuantity, imageUrl, categoryId) VALUES
+INSERT INTO Product ("name", "description", "price", "stockQuantity", "imageUrl", "categoryId") VALUES
 ('Laptop', 'A high-performance laptop.', 999.99, 10, 'https://example.com/laptop.jpg', 1),
 ('Smartphone', 'A latest model smartphone.', 699.99, 25, 'https://example.com/smartphone.jpg', 1),
 ('The Great Gatsby', 'A classic novel.', 12.50, 100, 'https://example.com/gatsby.jpg', 2),
