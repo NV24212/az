@@ -33,6 +33,10 @@ export interface Order {
   createdAt: string;
 }
 
+interface ApiError {
+  detail?: string;
+}
+
 // --- Public API calls ---
 export async function apiGet<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`);
@@ -47,7 +51,7 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const errorBody = await res.json().catch(() => ({}));
+    const errorBody = await res.json().catch(() => ({})) as ApiError;
     throw new Error(`POST ${path} failed: ${res.status} - ${errorBody.detail || 'Unknown error'}`);
   }
   return res.json();
@@ -82,7 +86,7 @@ async function apiPostAdmin<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const errorBody = await res.json().catch(() => ({}));
+    const errorBody = await res.json().catch(() => ({})) as ApiError;
     throw new Error(`POST ${path} failed: ${res.status} - ${errorBody.detail || 'Unknown error'}`);
   }
   return res.json();
@@ -95,7 +99,7 @@ async function apiPutAdmin<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const errorBody = await res.json().catch(() => ({}));
+    const errorBody = await res.json().catch(() => ({})) as ApiError;
     throw new Error(`PUT ${path} failed: ${res.status} - ${errorBody.detail || 'Unknown error'}`);
   }
   return res.json();
@@ -107,7 +111,7 @@ async function apiDeleteAdmin<T>(path: string): Promise<T> {
     headers: getAuthHeaders(),
   });
   if (!res.ok) {
-    const errorBody = await res.json().catch(() => ({}));
+    const errorBody = await res.json().catch(() => ({})) as ApiError;
     throw new Error(`DELETE ${path} failed: ${res.status} - ${errorBody.detail || 'Unknown error'}`);
   }
   return res.json();
