@@ -1,4 +1,5 @@
 import { Outlet, Link } from 'react-router-dom'
+import { Toaster } from 'sonner';
 import { useCartStore } from './lib/cartStore'
 import './App.css'
 
@@ -7,9 +8,22 @@ function App() {
 
   return (
     <div>
+      <Toaster
+        position="top-right"
+        richColors
+        toastOptions={{
+          style: {
+            borderRadius: '12px',
+          },
+          classNames: {
+            success: '!bg-[#742370] !border-[#742370]',
+            error: '!bg-[#ef4444] !border-[#ef4444]',
+          },
+        }}
+      />
       <nav className="p-4 flex justify-between items-center border-b border-slate-200">
         <div className="flex gap-4 items-center">
-          <Link to="/" className="font-bold text-lg text-purple-700">AzharStore</Link>
+          <Link to="/" className="font-bold text-lg" style={{ color: '#742370' }}>AzharStore</Link>
           <Link to="/admin" className="text-sm text-slate-600 hover:text-slate-900">Admin</Link>
         </div>
         <Link to="/cart" className="relative">
