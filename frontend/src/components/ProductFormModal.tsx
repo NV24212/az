@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import type { Product, Category } from '../lib/api';
 import { createProduct, updateProduct } from '../lib/api';
 
@@ -48,20 +49,35 @@ export default function ProductFormModal({ isOpen, onClose, product, categories 
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminProducts'] });
+      toast.success(product ? 'Product updated successfully!' : 'Product created successfully!');
       onClose();
     },
+    onError: (error) => {
+      toast.error(`Error: ${error.message}`);
+    }
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Basic validation
+    if (formData.categoryId === 0) {
+      toast.error("Please select a category.");
+      return;
+    }
     mutation.mutate(formData);
   };
 
   if (!isOpen) return null;
 
+  // Define styles based on SRS
+  const inputStyle = "w-full mt-1 p-2 border rounded-md focus:ring-2 focus:ring-[#742370] focus:border-[#742370]";
+  const buttonPrimaryStyle = "px-4 py-2 rounded-md text-white bg-[#742370] hover:bg-opacity-90 transition-colors disabled:opacity-50";
+  const buttonSecondaryStyle = "px-4 py-2 rounded-md bg-slate-200 hover:bg-slate-300 transition-colors";
+
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
-      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg">
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg animate-fade-in-scale">
         <h2 className="text-xl font-bold mb-4">{product ? 'Edit Product' : 'Create New Product'}</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -72,7 +88,7 @@ export default function ProductFormModal({ isOpen, onClose, product, categories 
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full mt-1 p-2 border rounded-md focus:ring-purple-500 focus:border-purple-500"
+                className={inputStyle}
               />
             </div>
             <div>
@@ -81,7 +97,7 @@ export default function ProductFormModal({ isOpen, onClose, product, categories 
                 required
                 value={formData.categoryId}
                 onChange={(e) => setFormData({ ...formData, categoryId: Number(e.target.value) })}
-                className="w-full mt-1 p-2 border rounded-md focus:ring-purple-500 focus:border-purple-500"
+                className={inputStyle}
               >
                 <option value={0} disabled>Select a category</option>
                 {categories.map((cat) => (
@@ -96,7 +112,7 @@ export default function ProductFormModal({ isOpen, onClose, product, categories 
               <textarea
                 value={formData.description || ''}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full mt-1 p-2 border rounded-md focus:ring-purple-500 focus:border-purple-500"
+                className={inputStyle}
                 rows={3}
               />
             </div>
@@ -109,7 +125,7 @@ export default function ProductFormModal({ isOpen, onClose, product, categories 
                 min="0"
                 value={formData.price}
                 onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
-                className="w-full mt-1 p-2 border rounded-md focus:ring-purple-500 focus:border-purple-500"
+                className={inputStyle}
               />
             </div>
             <div>
@@ -120,7 +136,7 @@ export default function ProductFormModal({ isOpen, onClose, product, categories 
                 min="0"
                 value={formData.stockQuantity}
                 onChange={(e) => setFormData({ ...formData, stockQuantity: Number(e.target.value) })}
-                className="w-full mt-1 p-2 border rounded-md focus:ring-purple-500 focus:border-purple-500"
+                className={inputStyle}
               />
             </div>
             <div className="md:col-span-2">
@@ -129,20 +145,19 @@ export default function ProductFormModal({ isOpen, onClose, product, categories 
                 type="text"
                 value={formData.imageUrl || ''}
                 onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                className="w-full mt-1 p-2 border rounded-md focus:ring-purple-500 focus:border-purple-500"
+                className={inputStyle}
                 placeholder="https://example.com/image.jpg"
               />
             </div>
           </div>
           <div className="flex justify-end space-x-2 pt-4">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded bg-slate-200 hover:bg-slate-300">
+            <button type="button" onClick={onClose} className={buttonSecondaryStyle}>
               Cancel
             </button>
-            <button type="submit" className="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-700" disabled={mutation.isPending}>
+            <button type="submit" className={buttonPrimaryStyle} disabled={mutation.isPending}>
               {mutation.isPending ? 'Saving...' : 'Save Product'}
             </button>
           </div>
-          {mutation.isError && <p className="text-red-500 mt-2">Error: {mutation.error.message}</p>}
         </form>
       </div>
     </div>
