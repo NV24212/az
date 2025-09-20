@@ -111,7 +111,7 @@ async def get_products(db: AsyncSession, skip: int = 0, limit: int = 100):
     return result.scalars().all()
 
 async def create_product(db: AsyncSession, product: schemas.ProductCreate):
-    db_product = models.Product(**product.dict())
+    db_product = models.Product(**product.model_dump())
     db.add(db_product)
     await db.commit()
     await db.refresh(db_product)
@@ -120,7 +120,7 @@ async def create_product(db: AsyncSession, product: schemas.ProductCreate):
 async def update_product(db: AsyncSession, product_id: int, product_update: schemas.ProductUpdate):
     db_product = await get_product(db, product_id)
     if db_product:
-        update_data = product_update.dict(exclude_unset=True)
+        update_data = product_update.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(db_product, key, value)
         await db.commit()
@@ -137,38 +137,57 @@ async def delete_product(db: AsyncSession, product_id: int):
 # --- Customer and Order Service Functions ---
 
 async def create_customer(db: AsyncSession, customer: schemas.CustomerCreate):
-    db_customer = models.Customer(**customer.dict())
+    db_customer = models.Customer(**customer.model_dump())
     db.add(db_customer)
     await db.commit()
     await db.refresh(db_customer)
     return db_customer
 
+import traceback
+
 async def create_order(db: AsyncSession, order: schemas.OrderCreate):
-    total_amount = 0
-    for item in order.items:
-        product = await get_product(db, item.productId)
-        if not product or product.stockQuantity < item.quantity:
-            raise HTTPException(status_code=400, detail=f"Product {item.productId} not available or insufficient stock.")
-        total_amount += product.price * item.quantity
+    try:
+        total_amount = 0
+        # Validate products and calculate total amount in one loop
+        products_to_update = []
+        for item in order.items:
+            product = await get_product(db, item.productId)
+            if not product:
+                raise HTTPException(status_code=404, detail=f"Product with ID {item.productId} not found.")
+            if product.stockQuantity < item.quantity:
+                raise HTTPException(status_code=400, detail=f"Insufficient stock for product {product.name}.")
 
-    db_order = models.Order(customerId=order.customerId, totalAmount=total_amount)
-    db.add(db_order)
-    await db.flush()
+            total_amount += product.price * item.quantity
+            products_to_update.append({'product': product, 'ordered_quantity': item.quantity})
 
-    for item in order.items:
-        product = await get_product(db, item.productId)
-        db_order_item = models.OrderItem(
-            orderId=db_order.orderId,
-            productId=item.productId,
-            quantity=item.quantity,
-            priceAtPurchase=product.price
-        )
-        product.stockQuantity -= item.quantity
-        db.add(db_order_item)
+        # Create the Order
+        db_order = models.Order(customerId=order.customerId, totalAmount=total_amount)
+        db.add(db_order)
+        await db.flush()  # Flush to get the orderId for the new order
 
-    await db.commit()
-    await db.refresh(db_order)
-    return db_order
+        # Create OrderItems and update stock
+        for item_data in products_to_update:
+            product = item_data['product']
+            ordered_quantity = item_data['ordered_quantity']
+
+            db_order_item = models.OrderItem(
+                orderId=db_order.orderId,
+                productId=product.productId,
+                quantity=ordered_quantity,
+                priceAtPurchase=product.price
+            )
+            db.add(db_order_item)
+            product.stockQuantity -= ordered_quantity
+
+        await db.commit()
+        await db.refresh(db_order)
+        return db_order
+    except Exception as e:
+        print("--- ERROR IN CREATE_ORDER ---")
+        traceback.print_exc()
+        print("-----------------------------")
+        # Re-raise the exception to let FastAPI handle it as a 500 error
+        raise e
 
 async def get_order(db: AsyncSession, order_id: int):
     result = await db.execute(select(models.Order).filter(models.Order.orderId == order_id))
@@ -202,7 +221,7 @@ async def get_settings(db: AsyncSession):
 async def update_settings(db: AsyncSession, settings_update: schemas.StoreSettingsUpdate):
     db_settings = await get_settings(db)
     if db_settings:
-        update_data = settings_update.dict(exclude_unset=True)
+        update_data = settings_update.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(db_settings, key, value)
         await db.commit()
