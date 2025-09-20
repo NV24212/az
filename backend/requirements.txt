@@ -9,4 +9,4 @@ psycopg2-binary==2.9.9
 asyncpg==0.29.0
 SQLAlchemy==2.0.31
 python-jose[cryptography]==3.3.0
-passlib[bcrypt]==2024.1
+passlib[bcrypt]
