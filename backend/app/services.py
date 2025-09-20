@@ -111,7 +111,7 @@ async def get_products(db: AsyncSession, skip: int = 0, limit: int = 100):
     return result.scalars().all()
 
 async def create_product(db: AsyncSession, product: schemas.ProductCreate):
-    db_product = models.Product(**product.dict())
+    db_product = models.Product(**product.model_dump())
     db.add(db_product)
     await db.commit()
     await db.refresh(db_product)
@@ -120,7 +120,7 @@ async def create_product(db: AsyncSession, product: schemas.ProductCreate):
 async def update_product(db: AsyncSession, product_id: int, product_update: schemas.ProductUpdate):
     db_product = await get_product(db, product_id)
     if db_product:
-        update_data = product_update.dict(exclude_unset=True)
+        update_data = product_update.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(db_product, key, value)
         await db.commit()
@@ -137,7 +137,7 @@ async def delete_product(db: AsyncSession, product_id: int):
 # --- Customer and Order Service Functions ---
 
 async def create_customer(db: AsyncSession, customer: schemas.CustomerCreate):
-    db_customer = models.Customer(**customer.dict())
+    db_customer = models.Customer(**customer.model_dump())
     db.add(db_customer)
     await db.commit()
     await db.refresh(db_customer)
@@ -202,7 +202,7 @@ async def get_settings(db: AsyncSession):
 async def update_settings(db: AsyncSession, settings_update: schemas.StoreSettingsUpdate):
     db_settings = await get_settings(db)
     if db_settings:
-        update_data = settings_update.dict(exclude_unset=True)
+        update_data = settings_update.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(db_settings, key, value)
         await db.commit()
