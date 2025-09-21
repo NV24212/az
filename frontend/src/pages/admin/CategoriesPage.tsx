@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
 import type { Category } from '../../lib/api';
 import { getAdminCategories, deleteCategory } from '../../lib/api';
 import CategoryFormModal from '../../components/CategoryFormModal';
-import CategoryTableSkeleton from '../../components/CategoryTableSkeleton';
 
 export default function CategoriesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -20,11 +18,7 @@ export default function CategoriesPage() {
     mutationFn: deleteCategory,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminCategories'] });
-      toast.success('Category deleted successfully!');
     },
-    onError: (err) => {
-      toast.error(`Error deleting category: ${err.message}`);
-    }
   });
 
   const handleOpenModal = (category: Category | null) => {
@@ -43,26 +37,22 @@ export default function CategoriesPage() {
     }
   };
 
-  if (isLoading) return <CategoryTableSkeleton />;
+  if (isLoading) return <p>Loading categories...</p>;
   if (isError) return <p className="text-red-500">Error fetching categories: {error.message}</p>;
 
-  const buttonPrimaryStyle = "px-4 py-2 rounded-md text-white bg-[#742370] hover:bg-opacity-90 transition-all duration-200 ease-in-out transform hover:scale-105 disabled:opacity-50";
-  const buttonSecondaryStyle = "px-3 py-1 text-sm rounded-md bg-slate-200 hover:bg-slate-300 transition-colors";
-  const buttonDestructiveStyle = "px-3 py-1 text-sm rounded-md bg-red-100 text-red-700 hover:bg-red-200 transition-colors";
-
   return (
-    <div className="animate-fade-in-scale">
+    <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Category Management</h1>
         <button
           onClick={() => handleOpenModal(null)}
-          className={buttonPrimaryStyle}
+          className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700"
         >
           + New Category
         </button>
       </div>
 
-      <div className="bg-white shadow-md rounded-lg overflow-x-auto">
+      <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-50">
             <tr>
@@ -72,11 +62,11 @@ export default function CategoriesPage() {
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
             {categories?.map((category) => (
-              <tr key={category.categoryId} className="hover:bg-slate-50 transition-colors">
+              <tr key={category.categoryId}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{category.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                  <button onClick={() => handleOpenModal(category)} className={buttonSecondaryStyle}>Edit</button>
-                  <button onClick={() => handleDelete(category.categoryId)} className={buttonDestructiveStyle}>Delete</button>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button onClick={() => handleOpenModal(category)} className="text-purple-600 hover:text-purple-900 mr-4">Edit</button>
+                  <button onClick={() => handleDelete(category.categoryId)} className="text-red-600 hover:text-red-900">Delete</button>
                 </td>
               </tr>
             ))}

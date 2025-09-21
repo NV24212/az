@@ -145,36 +145,26 @@ async def create_customer(db: AsyncSession, customer: schemas.CustomerCreate):
 
 async def create_order(db: AsyncSession, order: schemas.OrderCreate):
     total_amount = 0
-    # Validate products and calculate total amount in one loop
-    products_to_update = []
     for item in order.items:
         product = await get_product(db, item.productId)
-        if not product:
-            raise HTTPException(status_code=404, detail=f"Product with ID {item.productId} not found.")
-        if product.stockQuantity < item.quantity:
-            raise HTTPException(status_code=400, detail=f"Insufficient stock for product {product.name}.")
-
+        if not product or product.stockQuantity < item.quantity:
+            raise HTTPException(status_code=400, detail=f"Product {item.productId} not available or insufficient stock.")
         total_amount += product.price * item.quantity
-        products_to_update.append({'product': product, 'ordered_quantity': item.quantity})
 
-    # Create the Order
     db_order = models.Order(customerId=order.customerId, totalAmount=total_amount)
     db.add(db_order)
-    await db.flush()  # Flush to get the orderId for the new order
+    await db.flush()
 
-    # Create OrderItems and update stock
-    for item_data in products_to_update:
-        product = item_data['product']
-        ordered_quantity = item_data['ordered_quantity']
-
+    for item in order.items:
+        product = await get_product(db, item.productId)
         db_order_item = models.OrderItem(
             orderId=db_order.orderId,
-            productId=product.productId,
-            quantity=ordered_quantity,
+            productId=item.productId,
+            quantity=item.quantity,
             priceAtPurchase=product.price
         )
+        product.stockQuantity -= item.quantity
         db.add(db_order_item)
-        product.stockQuantity -= ordered_quantity
 
     await db.commit()
     await db.refresh(db_order)

@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     ADMIN_PASSWORD: str
     AZHAR_ADMIN_EMAIL: str
-    CORS_ORIGINS: str = "https://beta.azhar.store"
+    CORS_ORIGINS: str = "*"
 
     # JWT settings
     SECRET_KEY: str = "a_very_secret_key"  # Should be overridden in .env for production

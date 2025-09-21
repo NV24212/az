@@ -31,7 +31,7 @@ class Category(CategoryBase):
     categoryId: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # --- Store Settings Schemas ---
 class StoreSettingsBase(BaseModel):
@@ -58,7 +58,7 @@ class StoreSettings(StoreSettingsBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # --- Product Schemas ---
 class ProductBase(BaseModel):
@@ -79,7 +79,7 @@ class Product(ProductBase):
     productId: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # --- Customer Schemas ---
 class CustomerBase(BaseModel):
@@ -94,7 +94,7 @@ class Customer(CustomerBase):
     customerId: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # --- Order Schemas ---
 class OrderItemBase(BaseModel):
@@ -110,7 +110,7 @@ class OrderItem(OrderItemBase):
     priceAtPurchase: float
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class OrderBase(BaseModel):
     customerId: int
@@ -127,4 +127,4 @@ class Order(BaseModel):
     items: List[OrderItem] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
