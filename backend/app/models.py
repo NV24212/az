@@ -48,7 +48,7 @@ class Order(Base):
 
     orderId = Column("orderId", Integer, primary_key=True, index=True)
     customerId = Column("customerId", Integer, ForeignKey("Customer.customerId"))
-    status = Column(Enum(OrderStatusEnum), default=OrderStatusEnum.PENDING, nullable=False)
+    status = Column(Enum(OrderStatusEnum, name="order_status"), default=OrderStatusEnum.PENDING, nullable=False)
     totalAmount = Column("totalAmount", DECIMAL(10, 2), nullable=False)
     createdAt = Column("createdAt", DateTime(timezone=True), server_default=func.now())
 

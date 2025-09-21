@@ -1,8 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
 import type { Order, OrderStatus } from '../../lib/api';
 import { getAdminOrders, updateOrderStatus, deleteOrder } from '../../lib/api';
-import OrderTableSkeleton from '../../components/OrderTableSkeleton';
 
 export default function OrdersPage() {
   const queryClient = useQueryClient();
@@ -17,22 +15,14 @@ export default function OrdersPage() {
       updateOrderStatus(orderId, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
-      toast.success('Order status updated!');
     },
-    onError: (error) => {
-      toast.error(`Error updating status: ${error.message}`);
-    }
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteOrder,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
-      toast.success('Order deleted successfully!');
     },
-    onError: (error) => {
-      toast.error(`Error deleting order: ${error.message}`);
-    }
   });
 
   const handleDelete = (orderId: number) => {
@@ -45,15 +35,13 @@ export default function OrdersPage() {
     updateStatusMutation.mutate({ orderId, status });
   };
 
-  if (isLoading) return <OrderTableSkeleton />;
+  if (isLoading) return <p>Loading orders...</p>;
   if (isError) return <p className="text-red-500">Error fetching orders: {error.message}</p>;
 
-  const buttonDestructiveStyle = "px-3 py-1 text-sm rounded-md bg-red-100 text-red-700 hover:bg-red-200 transition-colors";
-
   return (
-    <div className="animate-fade-in-scale">
+    <div>
       <h1 className="text-2xl font-bold mb-6">Order Management</h1>
-      <div className="bg-white shadow-md rounded-lg overflow-x-auto">
+      <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-50">
             <tr>
@@ -67,7 +55,7 @@ export default function OrdersPage() {
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
             {orders?.map((order) => (
-              <tr key={order.orderId} className="hover:bg-slate-50 transition-colors">
+              <tr key={order.orderId}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">#{order.orderId}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{order.customerId}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{new Date(order.createdAt).toLocaleDateString()}</td>
@@ -76,7 +64,7 @@ export default function OrdersPage() {
                   <select
                     value={order.status}
                     onChange={(e) => handleStatusChange(order.orderId, e.target.value as OrderStatus)}
-                    className="p-1 rounded-md border-slate-300 focus:ring-2 focus:ring-[#742370]"
+                    className="p-1 rounded-md border-slate-300 focus:ring-purple-500 focus:border-purple-500"
                   >
                     <option value="PENDING">Pending</option>
                     <option value="SHIPPED">Shipped</option>
@@ -85,7 +73,7 @@ export default function OrdersPage() {
                   </select>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button onClick={() => handleDelete(order.orderId)} className={buttonDestructiveStyle}>Delete</button>
+                  <button onClick={() => handleDelete(order.orderId)} className="text-red-600 hover:text-red-900">Delete</button>
                 </td>
               </tr>
             ))}
