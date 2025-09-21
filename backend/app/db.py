@@ -10,13 +10,16 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise ValueError("No DATABASE_URL set for the connection")
 
+# Add statement_cache_size=0 to the URL to disable prepared statements for pgbouncer
+if "?" in DATABASE_URL:
+    DATABASE_URL += "&statement_cache_size=0"
+else:
+    DATABASE_URL += "?statement_cache_size=0"
+
 # The DATABASE_URL for Supabase should be a PostgreSQL connection string
 # e.g., "postgresql+asyncpg://user:password@host:port/database"
 
-engine = create_async_engine(
-    DATABASE_URL,
-    echo=True
-).execution_options(prepared_statement_cache_size=0)
+engine = create_async_engine(DATABASE_URL, echo=True)
 AsyncSessionLocal = sessionmaker(
     autocommit=False, autoflush=False, bind=engine, class_=AsyncSession
 )
