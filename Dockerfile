@@ -12,6 +12,12 @@ WORKDIR /app
 COPY backend/requirements.txt /app/backend/requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt
 
+# Install Frontend dependencies
+COPY frontend/package.json frontend/package-lock.json ./frontend/
+WORKDIR /app/frontend
+RUN npm install
+WORKDIR /app
+
 # Copy the rest of the application code
 COPY . /app
 

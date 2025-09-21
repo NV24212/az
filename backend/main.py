@@ -10,10 +10,6 @@ app = FastAPI(title="AzharStore API", version="0.1.0")
 # which defaults to "https://beta.azhar.store" in the config.
 origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(',')]
 
-print("--- ALLOWED CORS ORIGINS ---")
-print(origins)
-print("----------------------------")
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,

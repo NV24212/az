@@ -143,51 +143,42 @@ async def create_customer(db: AsyncSession, customer: schemas.CustomerCreate):
     await db.refresh(db_customer)
     return db_customer
 
-import traceback
-
 async def create_order(db: AsyncSession, order: schemas.OrderCreate):
-    try:
-        total_amount = 0
-        # Validate products and calculate total amount in one loop
-        products_to_update = []
-        for item in order.items:
-            product = await get_product(db, item.productId)
-            if not product:
-                raise HTTPException(status_code=404, detail=f"Product with ID {item.productId} not found.")
-            if product.stockQuantity < item.quantity:
-                raise HTTPException(status_code=400, detail=f"Insufficient stock for product {product.name}.")
+    total_amount = 0
+    # Validate products and calculate total amount in one loop
+    products_to_update = []
+    for item in order.items:
+        product = await get_product(db, item.productId)
+        if not product:
+            raise HTTPException(status_code=404, detail=f"Product with ID {item.productId} not found.")
+        if product.stockQuantity < item.quantity:
+            raise HTTPException(status_code=400, detail=f"Insufficient stock for product {product.name}.")
 
-            total_amount += product.price * item.quantity
-            products_to_update.append({'product': product, 'ordered_quantity': item.quantity})
+        total_amount += product.price * item.quantity
+        products_to_update.append({'product': product, 'ordered_quantity': item.quantity})
 
-        # Create the Order
-        db_order = models.Order(customerId=order.customerId, totalAmount=total_amount)
-        db.add(db_order)
-        await db.flush()  # Flush to get the orderId for the new order
+    # Create the Order
+    db_order = models.Order(customerId=order.customerId, totalAmount=total_amount)
+    db.add(db_order)
+    await db.flush()  # Flush to get the orderId for the new order
 
-        # Create OrderItems and update stock
-        for item_data in products_to_update:
-            product = item_data['product']
-            ordered_quantity = item_data['ordered_quantity']
+    # Create OrderItems and update stock
+    for item_data in products_to_update:
+        product = item_data['product']
+        ordered_quantity = item_data['ordered_quantity']
 
-            db_order_item = models.OrderItem(
-                orderId=db_order.orderId,
-                productId=product.productId,
-                quantity=ordered_quantity,
-                priceAtPurchase=product.price
-            )
-            db.add(db_order_item)
-            product.stockQuantity -= ordered_quantity
+        db_order_item = models.OrderItem(
+            orderId=db_order.orderId,
+            productId=product.productId,
+            quantity=ordered_quantity,
+            priceAtPurchase=product.price
+        )
+        db.add(db_order_item)
+        product.stockQuantity -= ordered_quantity
 
-        await db.commit()
-        await db.refresh(db_order)
-        return db_order
-    except Exception as e:
-        print("--- ERROR IN CREATE_ORDER ---")
-        traceback.print_exc()
-        print("-----------------------------")
-        # Re-raise the exception to let FastAPI handle it as a 500 error
-        raise e
+    await db.commit()
+    await db.refresh(db_order)
+    return db_order
 
 async def get_order(db: AsyncSession, order_id: int):
     result = await db.execute(select(models.Order).filter(models.Order.orderId == order_id))
