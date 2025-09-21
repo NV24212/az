@@ -31,10 +31,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def get_admin_credentials():
     admin_email = settings.AZHAR_ADMIN_EMAIL
-    admin_password = settings.ADMIN_PASSWORD
-    if not admin_email or not admin_password:
+    hashed_password = settings.ADMIN_PASSWORD
+    if not admin_email or not hashed_password:
         raise ValueError("AZHAR_ADMIN_EMAIL and ADMIN_PASSWORD must be set in the environment.")
-    return {"email": admin_email, "password": admin_password}
+    return {"email": admin_email, "hashed_password": hashed_password}
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
@@ -151,7 +151,11 @@ async def create_order(db: AsyncSession, order: schemas.OrderCreate):
             raise HTTPException(status_code=400, detail=f"Product {item.productId} not available or insufficient stock.")
         total_amount += product.price * item.quantity
 
-    db_order = models.Order(customerId=order.customerId, totalAmount=total_amount)
+    db_order = models.Order(
+        customerId=order.customerId,
+        totalAmount=total_amount,
+        status=models.OrderStatusEnum.PENDING,
+    )
     db.add(db_order)
     await db.flush()
 

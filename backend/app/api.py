@@ -16,7 +16,7 @@ admin_router = APIRouter(prefix="/api/admin")
 @admin_router.post("/login", response_model=schemas.Token)
 async def login_for_access_token(form_data: schemas.AdminLoginRequest):
     admin_creds = services.get_admin_credentials()
-    if form_data.password != admin_creds["password"]:
+    if not services.verify_password(form_data.password, admin_creds["hashed_password"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect password",
