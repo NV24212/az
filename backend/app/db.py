@@ -14,12 +14,12 @@ if not DATABASE_URL:
 # The DATABASE_URL for Supabase should be a PostgreSQL connection string
 # e.g., "postgresql+asyncpg://user:password@host:port/database"
 
-engine_args = {"echo": True}
-if DATABASE_URL and DATABASE_URL.startswith("postgresql"):
-    engine_args["connect_args"] = {"statement_cache_size": 0}
-
+# The statement_cache_size=0 is required for compatibility with pgbouncer
+# on services like Supabase.
 engine = create_async_engine(
-    DATABASE_URL, **engine_args
+    DATABASE_URL,
+    echo=True,
+    connect_args={"statement_cache_size": 0}
 )
 AsyncSessionLocal = sessionmaker(
     autocommit=False, autoflush=False, bind=engine, class_=AsyncSession
