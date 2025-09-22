@@ -14,16 +14,23 @@ admin_router = APIRouter(prefix="/api/admin")
 
 # --- Authentication Endpoint ---
 @admin_router.post("/login", response_model=schemas.Token)
-async def login_for_access_token(form_data: schemas.AdminLoginRequest):
-    admin_creds = services.get_admin_credentials()
-    if not services.verify_password(form_data.password, admin_creds["hashed_password"]):
+async def login_for_access_token(form_data: schemas.AdminLoginRequest, db: AsyncSession = Depends(get_db)):
+    try:
+        admin_creds = await services.get_admin_credentials(db)
+        if not services.verify_password(form_data.password, admin_creds["hashed_password"]):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        access_token = services.create_access_token(data={"sub": admin_creds["email"]})
+        return {"access_token": access_token, "token_type": "bearer"}
+    except ValueError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect password",
+            detail="Could not find admin credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token = services.create_access_token(data={"sub": admin_creds["email"]})
-    return {"access_token": access_token, "token_type": "bearer"}
 
 
 # --- Public Endpoints ---

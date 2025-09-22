@@ -2,6 +2,7 @@ import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
+from .models import Base
 
 load_dotenv()
 
@@ -14,11 +15,15 @@ if not DATABASE_URL:
 # e.g., "postgresql+asyncpg://user:password@host:port/database"
 
 engine = create_async_engine(
-    DATABASE_URL, echo=True, connect_args={"statement_cache_size": 0}
+    DATABASE_URL, echo=True
 )
 AsyncSessionLocal = sessionmaker(
     autocommit=False, autoflush=False, bind=engine, class_=AsyncSession
 )
+
+async def create_tables():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 async def get_db():
     """

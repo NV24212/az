@@ -10,6 +10,7 @@ from sqlalchemy.future import select
 
 from . import models, schemas
 from .config import settings
+from .db import get_db
 
 # Load environment variables from .env file
 load_dotenv()
@@ -29,12 +30,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     hashed_password_bytes = hashed_password.encode('utf-8')
     return bcrypt.checkpw(password=plain_password_bytes, hashed_password=hashed_password_bytes)
 
-def get_admin_credentials():
-    admin_email = settings.AZHAR_ADMIN_EMAIL
-    hashed_password = settings.ADMIN_PASSWORD
-    if not admin_email or not hashed_password:
-        raise ValueError("AZHAR_ADMIN_EMAIL and ADMIN_PASSWORD must be set in the environment.")
-    return {"email": admin_email, "hashed_password": hashed_password}
+async def get_admin_credentials(db: AsyncSession):
+    store_settings = await get_settings(db)
+    if not store_settings or not store_settings.adminEmail or not store_settings.hashed_password:
+        raise ValueError("Admin email and password must be set in the store settings.")
+    return {"email": store_settings.adminEmail, "hashed_password": store_settings.hashed_password}
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
@@ -46,7 +46,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
-async def get_current_admin_user(token: str = Depends(oauth2_scheme)):
+async def get_current_admin_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -57,11 +57,11 @@ async def get_current_admin_user(token: str = Depends(oauth2_scheme)):
         email: str | None = payload.get("sub")
         if email is None:
             raise credentials_exception
-        admin_creds = get_admin_credentials()
+        admin_creds = await get_admin_credentials(db)
         if email != admin_creds["email"]:
             raise credentials_exception
         return {"email": email}
-    except JWTError:
+    except (JWTError, ValueError):
         raise credentials_exception
 
 # --- Category Service Functions ---
@@ -207,8 +207,46 @@ async def update_settings(db: AsyncSession, settings_update: schemas.StoreSettin
     db_settings = await get_settings(db)
     if db_settings:
         update_data = settings_update.model_dump(exclude_unset=True)
+
+        if 'password' in update_data and update_data['password']:
+            hashed_password = get_password_hash(update_data['password'])
+            db_settings.hashed_password = hashed_password
+            del update_data['password']
+
         for key, value in update_data.items():
             setattr(db_settings, key, value)
+
         await db.commit()
         await db.refresh(db_settings)
     return db_settings
+
+async def initialize_database(db: AsyncSession):
+    # This function is called on startup to ensure the store settings exist.
+    store_settings = await get_settings(db)
+    if store_settings is None:
+        # If no settings exist, create them with default values
+        default_password = "azhar2311"
+        hashed_password = get_password_hash(default_password)
+
+        default_settings = models.StoreSettings(
+            id=1,
+            storeName="My Store",
+            adminEmail=settings.AZHAR_ADMIN_EMAIL,
+            hashed_password=hashed_password,
+            # Initialize other fields as needed
+            storeDescription="Welcome to my store!",
+            currency="USD",
+            deliveryFee=5.00,
+            freeDeliveryMinimum=50.00,
+            codEnabled=True,
+            orderSuccessMessageEn="Your order has been placed successfully!",
+            orderSuccessMessageAr="تم تقديم طلبك بنجاح!",
+            checkoutInstructionsEn="Please review your order details before proceeding.",
+            checkoutInstructionsAr="يرجى مراجعة تفاصيل طلبك قبل المتابعة.",
+            deliveryMessageEn="Your order will be delivered soon.",
+            deliveryMessageAr="سيتم توصيل طلبك قريبا.",
+            pickupMessageEn="You can pick up your order from our store.",
+            pickupMessageAr="يمكنك استلام طلبك من متجرنا."
+        )
+        db.add(default_settings)
+        await db.commit()

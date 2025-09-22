@@ -1,9 +1,23 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from app.api import router as api_router, admin_router
 from app.config import settings
+from app.db import get_db, create_tables
+from app.services import initialize_database
 
-app = FastAPI(title="AzharStore API", version="0.1.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # On startup
+    await create_tables()
+    async for db in get_db():
+        await initialize_database(db)
+        break
+    yield
+    # On shutdown
+    pass
+
+app = FastAPI(title="AzharStore API", version="0.1.0", lifespan=lifespan)
 
 origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(',')]
 
