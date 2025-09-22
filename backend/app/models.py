@@ -87,3 +87,4 @@ class StoreSettings(Base):
     pickupMessageEn = Column("pickupMessageEn", String)
     pickupMessageAr = Column("pickupMessageAr", String)
     adminEmail = Column("adminEmail", String)
+    hashed_password = Column(String)

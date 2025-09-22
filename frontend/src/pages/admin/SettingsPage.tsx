@@ -5,7 +5,9 @@ import { useEffect, useState } from 'react';
 
 export default function SettingsPage() {
   const queryClient = useQueryClient();
-  const [formData, setFormData] = useState<Partial<StoreSettings>>({});
+  const [formData, setFormData] = useState<Partial<StoreSettings & { password?: string }>>({});
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ['adminSettings'],
@@ -22,6 +24,8 @@ export default function SettingsPage() {
     mutationFn: (updatedSettings: Partial<StoreSettings>) => updateAdminSettings(updatedSettings),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminSettings'] });
+      setPassword('');
+      setConfirmPassword('');
       alert('Settings updated successfully!');
     },
     onError: (error) => {
@@ -31,7 +35,17 @@ export default function SettingsPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    mutation.mutate(formData);
+    if (password && password !== confirmPassword) {
+      alert("Passwords do not match.");
+      return;
+    }
+
+    const settingsToUpdate = { ...formData };
+    if (password) {
+      settingsToUpdate.password = password;
+    }
+
+    mutation.mutate(settingsToUpdate);
   };
 
   if (isLoading) return <p>Loading settings...</p>;
@@ -48,6 +62,14 @@ export default function SettingsPage() {
           <div>
             <label className="block text-sm font-medium">Admin Email</label>
             <input type="email" value={formData.adminEmail || ''} onChange={e => setFormData({...formData, adminEmail: e.target.value})} className="w-full mt-1 p-2 border rounded-md"/>
+          </div>
+          <div>
+            <label className="block text-sm font-medium">New Password</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full mt-1 p-2 border rounded-md" placeholder="Leave blank to keep current password"/>
+          </div>
+          <div>
+            <label className="block text-sm font-medium">Confirm New Password</label>
+            <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="w-full mt-1 p-2 border rounded-md"/>
           </div>
           <div className="md:col-span-2">
             <label className="block text-sm font-medium">Store Description</label>

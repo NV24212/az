@@ -52,7 +52,7 @@ class StoreSettingsBase(BaseModel):
     adminEmail: str | None = None
 
 class StoreSettingsUpdate(StoreSettingsBase):
-    pass
+    password: str | None = None
 
 class StoreSettings(StoreSettingsBase):
     id: int
