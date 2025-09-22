@@ -14,8 +14,12 @@ if not DATABASE_URL:
 # The DATABASE_URL for Supabase should be a PostgreSQL connection string
 # e.g., "postgresql+asyncpg://user:password@host:port/database"
 
+engine_args = {"echo": True}
+if DATABASE_URL and DATABASE_URL.startswith("postgresql"):
+    engine_args["connect_args"] = {"statement_cache_size": 0}
+
 engine = create_async_engine(
-    DATABASE_URL, echo=True
+    DATABASE_URL, **engine_args
 )
 AsyncSessionLocal = sessionmaker(
     autocommit=False, autoflush=False, bind=engine, class_=AsyncSession
