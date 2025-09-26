@@ -1,9 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.api import router as api_router, admin_router
 from app.config import settings
-from app.db import get_db, engine
+from app.db import AsyncSessionLocal, engine
 from app.models import Base
 from app.services import initialize_database
 
@@ -15,15 +15,26 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
 
     print("--- Initializing default settings ---")
-    async for db in get_db():
-        await initialize_database(db)
-        break # We only need one session to do this
+    async with AsyncSessionLocal() as session:
+        await initialize_database(session)
     yield
     # On shutdown
     print("--- Application shutting down ---")
     pass
 
 app = FastAPI(title="AzharStore API", version="0.1.0", lifespan=lifespan)
+
+@app.middleware("http")
+async def db_session_middleware(request: Request, call_next):
+    session = None
+    try:
+        session = AsyncSessionLocal()
+        request.state.db = session
+        response = await call_next(request)
+    finally:
+        if session:
+            await session.close()
+    return response
 
 # Hardcode the allowed origins to ensure stability
 origins = [
