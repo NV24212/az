@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "*"
 
     # JWT settings
-    SECRET_KEY: str = "a_very_secret_key"  # Should be overridden in .env for production
+    SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
