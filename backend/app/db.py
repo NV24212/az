@@ -11,6 +11,10 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise ValueError("No DATABASE_URL set for the connection")
 
+# Ensure the URL uses the asyncpg driver
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 # The DATABASE_URL for Supabase should be a PostgreSQL connection string
 # e.g., "postgresql+asyncpg://user:password@host:port/database"
 
