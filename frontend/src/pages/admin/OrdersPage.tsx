@@ -3,13 +3,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import type { Order, OrderStatus } from '@/types';
 
+// --- Configuration ---
+const BASE_URL = 'https://api.azhar.store';
+
 // --- API Helper Functions ---
 
 const getAuthToken = () => localStorage.getItem('admin_token');
 
 const fetchOrders = async (): Promise<Order[]> => {
   const token = getAuthToken();
-  const response = await fetch('/api/admin/orders/', {
+  const response = await fetch(`${BASE_URL}/api/admin/orders/`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!response.ok) throw new Error('Failed to fetch orders');
@@ -18,7 +21,7 @@ const fetchOrders = async (): Promise<Order[]> => {
 
 const updateOrderStatus = async ({ orderId, status }: { orderId: number; status: OrderStatus }): Promise<Order> => {
   const token = getAuthToken();
-  const response = await fetch(`/api/admin/orders/${orderId}`, {
+  const response = await fetch(`${BASE_URL}/api/admin/orders/${orderId}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -32,7 +35,7 @@ const updateOrderStatus = async ({ orderId, status }: { orderId: number; status:
 
 const deleteOrder = async (orderId: number): Promise<Order> => {
   const token = getAuthToken();
-  const response = await fetch(`/api/admin/orders/${orderId}`, {
+  const response = await fetch(`${BASE_URL}/api/admin/orders/${orderId}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });

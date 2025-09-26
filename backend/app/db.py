@@ -2,6 +2,7 @@ import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
+from fastapi import Request
 from .models import Base
 
 load_dotenv()
@@ -14,9 +15,6 @@ if not DATABASE_URL:
 # Ensure the URL uses the asyncpg driver
 if DATABASE_URL.startswith("postgresql://"):
     DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
-
-# The DATABASE_URL for Supabase should be a PostgreSQL connection string
-# e.g., "postgresql+asyncpg://user:password@host:port/database"
 
 # The statement_cache_size=0 is required for compatibility with pgbouncer
 # on services like Supabase.
@@ -34,10 +32,10 @@ async def create_tables():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-async def get_db():
+# New dependency to get the DB session from the request state
+def get_db(request: Request) -> AsyncSession:
     """
-    FastAPI dependency to get a database session.
-    Ensures the session is always closed after the request.
+    FastAPI dependency that retrieves the session from the request state.
+    The session is managed by the db_session_middleware.
     """
-    async with AsyncSessionLocal() as session:
-        yield session
+    return request.state.db
