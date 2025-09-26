@@ -7,6 +7,7 @@ from .models import Base
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+print(f"--- [DB DEBUG] DATABASE_URL from environment: {DATABASE_URL}")
 
 if not DATABASE_URL:
     raise ValueError("No DATABASE_URL set for the connection")
@@ -16,10 +17,13 @@ if not DATABASE_URL:
 
 # The statement_cache_size=0 is required for compatibility with pgbouncer
 # on services like Supabase.
+connect_args_to_use = {"statement_cache_size": 0}
+print(f"--- [DB DEBUG] Using connect_args: {connect_args_to_use}")
+
 engine = create_async_engine(
     DATABASE_URL,
     echo=True,
-    connect_args={"statement_cache_size": 0}
+    connect_args=connect_args_to_use
 )
 AsyncSessionLocal = sessionmaker(
     autocommit=False, autoflush=False, bind=engine, class_=AsyncSession
