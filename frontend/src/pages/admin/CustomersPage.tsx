@@ -1,40 +1,15 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import type { Customer } from '@/types';
+
+// --- Type Definitions ---
+type CustomerData = Omit<Customer, 'customerId'>;
 
 // --- API Helper Functions ---
 
 const getAuthToken = () => localStorage.getItem('admin_token');
 
-const fetchCustomers = async () => {
+const fetchCustomers = async (): Promise<Customer[]> => {
   const token = getAuthToken();
   const response = await fetch('/api/admin/customers/', {
     headers: { Authorization: `Bearer ${token}` },
@@ -43,7 +18,7 @@ const fetchCustomers = async () => {
   return response.json();
 };
 
-const createCustomer = async (customerData) => {
+const createCustomer = async (customerData: CustomerData): Promise<Customer> => {
   const token = getAuthToken();
   const response = await fetch('/api/admin/customers/', {
     method: 'POST',
@@ -57,21 +32,21 @@ const createCustomer = async (customerData) => {
   return response.json();
 };
 
-const updateCustomer = async ({ id, ...customerData }) => {
+const updateCustomer = async (data: { id: number; customerData: CustomerData }): Promise<Customer> => {
   const token = getAuthToken();
-  const response = await fetch(`/api/admin/customers/${id}`, {
+  const response = await fetch(`/api/admin/customers/${data.id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify(customerData),
+    body: JSON.stringify(data.customerData),
   });
   if (!response.ok) throw new Error('Failed to update customer');
   return response.json();
 };
 
-const deleteCustomer = async (id) => {
+const deleteCustomer = async (id: number): Promise<Customer> => {
   const token = getAuthToken();
   const response = await fetch(`/api/admin/customers/${id}`, {
     method: 'DELETE',
@@ -81,50 +56,60 @@ const deleteCustomer = async (id) => {
   return response.json();
 };
 
-// --- Customer Form Component ---
+// --- Customer Form Component (as a modal) ---
 
-const CustomerForm = ({ customer, onSuccess }) => {
+interface CustomerFormProps {
+  customer: Customer | null;
+  onSuccess: () => void;
+  onClose: () => void;
+}
+
+const CustomerFormModal = ({ customer, onSuccess, onClose }: CustomerFormProps) => {
   const [name, setName] = useState(customer?.name || '');
   const [phone, setPhone] = useState(customer?.phone || '');
   const [address, setAddress] = useState(customer?.address || '');
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: customer ? updateCustomer : createCustomer,
+    mutationFn: customer ? (data: CustomerData) => updateCustomer({ id: customer.customerId, customerData: data }) : createCustomer,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       onSuccess();
     },
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const customerData = { name, phone, address };
-    if (customer) {
-      mutation.mutate({ id: customer.customerId, ...customerData });
-    } else {
-      mutation.mutate(customerData);
-    }
+    const customerData: CustomerData = { name, phone, address };
+    mutation.mutate(customerData);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <Label htmlFor="name">Name</Label>
-        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <div style={{ background: 'white', padding: '2rem', borderRadius: '8px', minWidth: '400px' }}>
+        <h2>{customer ? 'Edit Customer' : 'Add New Customer'}</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="name">Name</label>
+            <input id="name" value={name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc' }}/>
+          </div>
+          <div>
+            <label htmlFor="phone">Phone</label>
+            <input id="phone" value={phone} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc' }}/>
+          </div>
+          <div>
+            <label htmlFor="address">Address</label>
+            <input id="address" value={address} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAddress(e.target.value)} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc' }}/>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '1rem' }}>
+            <button type="button" onClick={onClose}>Cancel</button>
+            <button type="submit" disabled={mutation.isPending} style={{ background: '#333', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '4px' }}>
+              {mutation.isPending ? 'Saving...' : 'Save Customer'}
+            </button>
+          </div>
+        </form>
       </div>
-      <div>
-        <Label htmlFor="phone">Phone</Label>
-        <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} required />
-      </div>
-      <div>
-        <Label htmlFor="address">Address</Label>
-        <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} required />
-      </div>
-      <Button type="submit" disabled={mutation.isLoading}>
-        {mutation.isLoading ? 'Saving...' : 'Save Customer'}
-      </Button>
-    </form>
+    </div>
   );
 };
 
@@ -132,10 +117,10 @@ const CustomerForm = ({ customer, onSuccess }) => {
 
 const CustomersPage = () => {
   const [isFormOpen, setFormOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: customers, isLoading, error } = useQuery({
+  const { data: customers, isPending, error } = useQuery<Customer[], Error>({
     queryKey: ['customers'],
     queryFn: fetchCustomers,
   });
@@ -147,79 +132,71 @@ const CustomersPage = () => {
     },
   });
 
-  if (isLoading) return <div>Loading customers...</div>;
+  const handleDelete = (id: number) => {
+    if (window.confirm('Are you sure you want to delete this customer?')) {
+      deleteMutation.mutate(id);
+    }
+  };
+
+  if (isPending) return <div>Loading customers...</div>;
   if (error) return <div>Error: {error.message}</div>;
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Customers</h1>
-        <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setSelectedCustomer(null)}>Add Customer</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{selectedCustomer ? 'Edit Customer' : 'Add New Customer'}</DialogTitle>
-            </DialogHeader>
-            <CustomerForm
-              customer={selectedCustomer}
-              onSuccess={() => setFormOpen(false)}
-            />
-          </DialogContent>
-        </Dialog>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <h1 style={{ fontSize: '2rem', fontWeight: 'bold' }}>Customers</h1>
+        <button
+          onClick={() => {
+            setSelectedCustomer(null);
+            setFormOpen(true);
+          }}
+          style={{ background: '#333', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '4px' }}
+        >
+          Add Customer
+        </button>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Phone</TableHead>
-            <TableHead>Address</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {customers.map((customer) => (
-            <TableRow key={customer.customerId}>
-              <TableCell>{customer.name}</TableCell>
-              <TableCell>{customer.phone}</TableCell>
-              <TableCell>{customer.address}</TableCell>
-              <TableCell className="space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
+      {isFormOpen && (
+        <CustomerFormModal
+          customer={selectedCustomer}
+          onSuccess={() => setFormOpen(false)}
+          onClose={() => setFormOpen(false)}
+        />
+      )}
+
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>
+            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Name</th>
+            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Phone</th>
+            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Address</th>
+            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {customers?.map((customer) => (
+            <tr key={customer.customerId}>
+              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{customer.name}</td>
+              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{customer.phone}</td>
+              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{customer.address}</td>
+              <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                <button
                   onClick={() => {
                     setSelectedCustomer(customer);
                     setFormOpen(true);
                   }}
+                  style={{ marginRight: '8px' }}
                 >
                   Edit
-                </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm">Delete</Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete the customer.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => deleteMutation.mutate(customer.customerId)}>
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </TableCell>
-            </TableRow>
+                </button>
+                <button onClick={() => handleDelete(customer.customerId)}>
+                  Delete
+                </button>
+              </td>
+            </tr>
           ))}
-        </TableBody>
-      </Table>
+        </tbody>
+      </table>
     </div>
   );
 };
