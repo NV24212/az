@@ -221,13 +221,15 @@ async def update_settings(db: AsyncSession, settings_update: schemas.StoreSettin
     return db_settings
 
 async def initialize_database(db: AsyncSession):
-    # This function is called on startup to ensure the store settings exist.
+    # This function is called on startup to ensure the store settings exist and are valid.
     store_settings = await get_settings(db)
-    if store_settings is None:
-        # If no settings exist, create them with default values
-        default_password = "azhar2311"
-        hashed_password = get_password_hash(default_password)
 
+    default_password = "azhar2311"
+    hashed_password = get_password_hash(default_password)
+
+    if store_settings is None:
+        print("--- No store settings found. Creating with default password. ---")
+        # If no settings exist, create them with default values
         default_settings = models.StoreSettings(
             id=1,
             storeName="My Store",
@@ -249,4 +251,10 @@ async def initialize_database(db: AsyncSession):
             pickupMessageAr="يمكنك استلام طلبك من متجرنا."
         )
         db.add(default_settings)
-        await db.commit()
+
+    elif not store_settings.hashed_password:
+        print("--- Hashed password not found in existing settings. Setting default password. ---")
+        # If settings exist but the password column is empty, set the default password.
+        store_settings.hashed_password = hashed_password
+
+    await db.commit()
