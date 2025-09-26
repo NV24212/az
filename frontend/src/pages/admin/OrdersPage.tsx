@@ -1,47 +1,13 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
+import type { Order, OrderStatus } from '@/types';
 
 // --- API Helper Functions ---
 
 const getAuthToken = () => localStorage.getItem('admin_token');
 
-const fetchOrders = async () => {
+const fetchOrders = async (): Promise<Order[]> => {
   const token = getAuthToken();
   const response = await fetch('/api/admin/orders/', {
     headers: { Authorization: `Bearer ${token}` },
@@ -50,7 +16,7 @@ const fetchOrders = async () => {
   return response.json();
 };
 
-const updateOrderStatus = async ({ orderId, status }) => {
+const updateOrderStatus = async ({ orderId, status }: { orderId: number; status: OrderStatus }): Promise<Order> => {
   const token = getAuthToken();
   const response = await fetch(`/api/admin/orders/${orderId}`, {
     method: 'PUT',
@@ -64,7 +30,7 @@ const updateOrderStatus = async ({ orderId, status }) => {
   return response.json();
 };
 
-const deleteOrder = async (orderId) => {
+const deleteOrder = async (orderId: number): Promise<Order> => {
   const token = getAuthToken();
   const response = await fetch(`/api/admin/orders/${orderId}`, {
     method: 'DELETE',
@@ -74,42 +40,51 @@ const deleteOrder = async (orderId) => {
   return response.json();
 };
 
-// --- Status Update Form ---
+// --- Status Update Form (as a modal) ---
 
-const StatusUpdateForm = ({ order, onSuccess }) => {
-  const [status, setStatus] = useState(order.status);
+interface StatusUpdateFormProps {
+  order: Order;
+  onSuccess: () => void;
+  onClose: () => void;
+}
+
+const StatusUpdateModal = ({ order, onSuccess, onClose }: StatusUpdateFormProps) => {
+  const [status, setStatus] = useState<OrderStatus>(order.status);
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
     mutationFn: updateOrderStatus,
     onSuccess: () => {
-      queryClient.invalidateQueries(['orders']);
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
       onSuccess();
     },
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     mutation.mutate({ orderId: order.orderId, status });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <Select value={status} onValueChange={setStatus}>
-        <SelectTrigger>
-          <SelectValue placeholder="Select status" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="PENDING">Pending</SelectItem>
-          <SelectItem value="SHIPPED">Shipped</SelectItem>
-          <SelectItem value="DELIVERED">Delivered</SelectItem>
-          <SelectItem value="CANCELLED">Cancelled</SelectItem>
-        </SelectContent>
-      </Select>
-      <Button type="submit" disabled={mutation.isLoading}>
-        {mutation.isLoading ? 'Updating...' : 'Update Status'}
-      </Button>
-    </form>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <div style={{ background: 'white', padding: '2rem', borderRadius: '8px', minWidth: '400px' }}>
+        <h2>Update Order #{order.orderId}</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <select value={status} onChange={(e) => setStatus(e.target.value as OrderStatus)} style={{ width: '100%', padding: '8px', border: '1px solid #ccc' }}>
+            <option value="PENDING">Pending</option>
+            <option value="SHIPPED">Shipped</option>
+            <option value="DELIVERED">Delivered</option>
+            <option value="CANCELLED">Cancelled</option>
+          </select>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '1rem' }}>
+             <button type="button" onClick={onClose}>Cancel</button>
+            <button type="submit" disabled={mutation.isPending} style={{ background: '#333', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '4px' }}>
+              {mutation.isPending ? 'Updating...' : 'Update Status'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 };
 
@@ -117,10 +92,11 @@ const StatusUpdateForm = ({ order, onSuccess }) => {
 
 const OrdersPage = () => {
   const [isFormOpen, setFormOpen] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: orders, isLoading, error } = useQuery({
+  const { data: orders, isPending, error } = useQuery<Order[], Error>({
     queryKey: ['orders'],
     queryFn: fetchOrders,
   });
@@ -128,113 +104,107 @@ const OrdersPage = () => {
   const deleteMutation = useMutation({
     mutationFn: deleteOrder,
     onSuccess: () => {
-      queryClient.invalidateQueries(['orders']);
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
     },
   });
 
-  const getStatusVariant = (status) => {
-    switch (status) {
-      case 'PENDING': return 'secondary';
-      case 'SHIPPED': return 'default';
-      case 'DELIVERED': return 'success';
-      case 'CANCELLED': return 'destructive';
-      default: return 'outline';
+  const handleDelete = (id: number) => {
+    if (window.confirm('Are you sure you want to delete this order?')) {
+      deleteMutation.mutate(id);
     }
   };
 
-  if (isLoading) return <div>Loading orders...</div>;
+  const toggleExpand = (orderId: number) => {
+    setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
+  };
+
+  if (isPending) return <div>Loading orders...</div>;
   if (error) return <div>Error: {error.message}</div>;
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">Orders</h1>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Order ID</TableHead>
-            <TableHead>Customer</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Total</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {orders.map((order) => (
+      <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '1rem' }}>Orders</h1>
+      {isFormOpen && selectedOrder && (
+        <StatusUpdateModal
+          order={selectedOrder}
+          onSuccess={() => setFormOpen(false)}
+          onClose={() => setFormOpen(false)}
+        />
+      )}
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>
+            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}></th>
+            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Order ID</th>
+            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Customer</th>
+            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Date</th>
+            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Status</th>
+            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Total</th>
+            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {orders?.map((order) => (
             <React.Fragment key={order.orderId}>
-              <TableRow>
-                <TableCell>#{order.orderId}</TableCell>
-                <TableCell>{order.customer.name}</TableCell>
-                <TableCell>{format(new Date(order.createdAt), 'PPpp')}</TableCell>
-                <TableCell>
-                  <Badge variant={getStatusVariant(order.status)}>{order.status}</Badge>
-                </TableCell>
-                <TableCell>${order.totalAmount.toFixed(2)}</TableCell>
-                <TableCell className="space-x-2">
-                  <Dialog open={isFormOpen && selectedOrder?.orderId === order.orderId} onOpenChange={(isOpen) => !isOpen && setSelectedOrder(null)}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" onClick={() => { setSelectedOrder(order); setFormOpen(true); }}>
-                        Update Status
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Update Order #{order.orderId}</DialogTitle>
-                      </DialogHeader>
-                      <StatusUpdateForm order={order} onSuccess={() => { setFormOpen(false); setSelectedOrder(null); }} />
-                    </DialogContent>
-                  </Dialog>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive" size="sm">Delete</Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This action cannot be undone. This will permanently delete the order.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => deleteMutation.mutate(order.orderId)}>
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </TableCell>
-              </TableRow>
-              {/* Collapsible row for order items */}
-              <TableRow>
-                <TableCell colSpan={6} className="p-0">
-                  <div className="p-4 bg-slate-50">
-                    <h4 className="font-semibold mb-2">Order Items:</h4>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Product</TableHead>
-                          <TableHead>Quantity</TableHead>
-                          <TableHead>Price at Purchase</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
+              <tr >
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                  <button onClick={() => toggleExpand(order.orderId)}>
+                    {expandedOrderId === order.orderId ? '-' : '+'}
+                  </button>
+                </td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>#{order.orderId}</td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{order.customer.name}</td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{format(new Date(order.createdAt), 'PPpp')}</td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                  <span style={{ padding: '4px 8px', borderRadius: '4px', background: '#eee' }}>
+                    {order.status}
+                  </span>
+                </td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>${order.totalAmount.toFixed(2)}</td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                   <button
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setFormOpen(true);
+                      }}
+                      style={{ marginRight: '8px' }}
+                    >
+                      Update Status
+                    </button>
+                    <button onClick={() => handleDelete(order.orderId)}>
+                      Delete
+                    </button>
+                </td>
+              </tr>
+              {expandedOrderId === order.orderId && (
+                <tr>
+                  <td colSpan={7} style={{ padding: '16px', background: '#f9f9f9' }}>
+                    <h4>Order Items:</h4>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '8px' }}>
+                       <thead>
+                          <tr>
+                            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Product</th>
+                            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Quantity</th>
+                            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Price at Purchase</th>
+                          </tr>
+                        </thead>
+                       <tbody>
                         {order.items.map((item) => (
-                          <TableRow key={item.orderItemId}>
-                            <TableCell>{item.product.name}</TableCell>
-                            <TableCell>{item.quantity}</TableCell>
-                            <TableCell>${item.priceAtPurchase.toFixed(2)}</TableCell>
-                          </TableRow>
+                          <tr key={item.orderItemId}>
+                            <td style={{ border: '1px solid #ddd', padding: '8px' }}>{item.product.name}</td>
+                            <td style={{ border: '1px solid #ddd', padding: '8px' }}>{item.quantity}</td>
+                            <td style={{ border: '1px solid #ddd', padding: '8px' }}>${item.priceAtPurchase.toFixed(2)}</td>
+                          </tr>
                         ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </TableCell>
-              </TableRow>
+                      </tbody>
+                    </table>
+                  </td>
+                </tr>
+              )}
             </React.Fragment>
           ))}
-        </TableBody>
-      </Table>
+        </tbody>
+      </table>
     </div>
   );
 };

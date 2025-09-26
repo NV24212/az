@@ -1,6 +1,10 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 from . import services, schemas
 from .db import get_db
@@ -55,9 +59,11 @@ async def create_order_endpoint(order: schemas.OrderCreate, db: AsyncSession = D
     try:
         return await services.create_order(db=db, order=order)
     except HTTPException as e:
+        # Re-raise HTTPExceptions directly as they are intentional
         raise e
-    except Exception:
-        # Log the exception details here for debugging if a logging system is in place
+    except Exception as e:
+        # Log the full traceback of the unexpected error for debugging
+        logger.exception("An unexpected error occurred while creating an order.")
         raise HTTPException(status_code=500, detail="An unexpected error occurred while creating the order.")
 
 

@@ -173,51 +173,52 @@ async def delete_customer(db: AsyncSession, customer_id: int):
 from sqlalchemy import select
 
 async def create_order(db: AsyncSession, order: schemas.OrderCreate):
-    """
-    Creates an order in a single transaction.
-    - Fetches all products at once.
-    - Validates stock for all items.
-    - Creates the Order and OrderItems.
-    - Decrements stock quantities.
-    - Commits all changes together.
-    """
-    async with db.begin_nested():
+    async with db.begin_nested(): # Start a transaction
+        # 1. Fetch all products at once and validate stock
         product_ids = [item.productId for item in order.items]
-        result = await db.execute(select(models.Product).filter(models.Product.productId.in_(product_ids)))
+        result = await db.execute(
+            select(models.Product).filter(models.Product.productId.in_(product_ids))
+        )
         products_in_db = {p.productId: p for p in result.scalars().all()}
 
         total_amount = 0
-        order_items_to_create = []
-
         for item in order.items:
             product = products_in_db.get(item.productId)
             if not product:
                 raise HTTPException(status_code=404, detail=f"Product with ID {item.productId} not found.")
             if product.stockQuantity < item.quantity:
-                raise HTTPException(status_code=400, detail=f"Insufficient stock for product {product.name} (ID: {item.productId}).")
-
+                raise HTTPException(status_code=400, detail=f"Insufficient stock for {product.name}.")
             total_amount += product.price * item.quantity
-            product.stockQuantity -= item.quantity  # Decrement stock
 
-            order_items_to_create.append(
-                models.OrderItem(
-                    productId=item.productId,
-                    quantity=item.quantity,
-                    priceAtPurchase=product.price
-                )
-            )
-
+        # 2. Create the Order object without items first
         db_order = models.Order(
             customerId=order.customerId,
             totalAmount=total_amount,
             status=models.OrderStatusEnum.PENDING,
-            items=order_items_to_create
         )
         db.add(db_order)
+        await db.flush() # Flush to get the generated orderId
 
-    await db.commit()
-    await db.refresh(db_order)
-    return db_order
+        # 3. Now create OrderItems with the correct orderId and update stock
+        for item in order.items:
+            product = products_in_db.get(item.productId)
+            # This check is redundant but safe
+            if product:
+                product.stockQuantity -= item.quantity
+                db_order_item = models.OrderItem(
+                    orderId=db_order.orderId,
+                    productId=item.productId,
+                    quantity=item.quantity,
+                    priceAtPurchase=product.price,
+                )
+                db.add(db_order_item)
+
+    # 4. The transaction is automatically committed here by the 'async with' block.
+
+    # 5. Fetch the fully populated order to return to the client
+    # This ensures all relationships (customer, items, products) are loaded
+    created_order = await get_order(db, db_order.orderId)
+    return created_order
 
 from sqlalchemy.orm import joinedload
 
