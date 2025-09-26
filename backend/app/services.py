@@ -213,8 +213,7 @@ async def create_order(db: AsyncSession, order: schemas.OrderCreate):
                 )
                 db.add(db_order_item)
 
-    # 4. Commit the transaction
-    await db.commit()
+    # 4. The transaction is automatically committed here by the 'async with' block.
 
     # 5. Fetch the fully populated order to return to the client
     # This ensures all relationships (customer, items, products) are loaded
