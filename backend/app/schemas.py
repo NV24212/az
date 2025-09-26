@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from enum import Enum
 from typing import List
+from datetime import datetime
 
 # --- Pydantic Models for Authentication ---
 class AdminLoginRequest(BaseModel):
@@ -90,6 +91,11 @@ class CustomerBase(BaseModel):
 class CustomerCreate(CustomerBase):
     pass
 
+class CustomerUpdate(BaseModel):
+    name: str | None = None
+    phone: str | None = None
+    address: str | None = None
+
 class Customer(CustomerBase):
     customerId: int
 
@@ -108,6 +114,7 @@ class OrderItem(OrderItemBase):
     orderItemId: int
     orderId: int
     priceAtPurchase: float
+    product: Product  # Nested product details
 
     class Config:
         from_attributes = True
@@ -124,7 +131,9 @@ class Order(BaseModel):
     customerId: int
     status: OrderStatus
     totalAmount: float
+    createdAt: datetime
     items: List[OrderItem] = []
+    customer: Customer # Nested customer details
 
     class Config:
         from_attributes = True

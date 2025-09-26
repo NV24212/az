@@ -107,6 +107,37 @@ async def delete_category(category_id: int, db: AsyncSession = Depends(get_db), 
     return db_category
 
 
+# --- Admin Customer Management Endpoints ---
+@admin_router.get("/customers/", response_model=List[schemas.Customer])
+async def read_customers(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db), admin: dict = Depends(services.get_current_admin_user)):
+    return await services.get_customers(db, skip=skip, limit=limit)
+
+@admin_router.get("/customers/{customer_id}", response_model=schemas.Customer)
+async def read_customer(customer_id: int, db: AsyncSession = Depends(get_db), admin: dict = Depends(services.get_current_admin_user)):
+    db_customer = await services.get_customer(db, customer_id=customer_id)
+    if db_customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return db_customer
+
+@admin_router.post("/customers/", response_model=schemas.Customer)
+async def create_admin_customer(customer: schemas.CustomerCreate, db: AsyncSession = Depends(get_db), admin: dict = Depends(services.get_current_admin_user)):
+    return await services.create_customer(db=db, customer=customer)
+
+@admin_router.put("/customers/{customer_id}", response_model=schemas.Customer)
+async def update_customer(customer_id: int, customer: schemas.CustomerUpdate, db: AsyncSession = Depends(get_db), admin: dict = Depends(services.get_current_admin_user)):
+    db_customer = await services.update_customer(db, customer_id=customer_id, customer_update=customer)
+    if db_customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return db_customer
+
+@admin_router.delete("/customers/{customer_id}", response_model=schemas.Customer)
+async def delete_customer(customer_id: int, db: AsyncSession = Depends(get_db), admin: dict = Depends(services.get_current_admin_user)):
+    db_customer = await services.delete_customer(db, customer_id=customer_id)
+    if db_customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return db_customer
+
+
 # --- Admin Order Management Endpoints ---
 @admin_router.get("/orders/", response_model=List[schemas.Order])
 async def read_orders(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db), admin: dict = Depends(services.get_current_admin_user)):

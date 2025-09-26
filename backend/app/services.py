@@ -138,6 +138,14 @@ async def delete_product(db: AsyncSession, product_id: int):
 
 # --- Customer and Order Service Functions ---
 
+async def get_customer(db: AsyncSession, customer_id: int):
+    result = await db.execute(select(models.Customer).filter(models.Customer.customerId == customer_id))
+    return result.scalar_one_or_none()
+
+async def get_customers(db: AsyncSession, skip: int = 0, limit: int = 100):
+    result = await db.execute(select(models.Customer).offset(skip).limit(limit))
+    return result.scalars().all()
+
 async def create_customer(db: AsyncSession, customer: schemas.CustomerCreate):
     db_customer = models.Customer(**customer.model_dump())
     db.add(db_customer)
@@ -145,43 +153,95 @@ async def create_customer(db: AsyncSession, customer: schemas.CustomerCreate):
     await db.refresh(db_customer)
     return db_customer
 
+async def update_customer(db: AsyncSession, customer_id: int, customer_update: schemas.CustomerUpdate):
+    db_customer = await get_customer(db, customer_id)
+    if db_customer:
+        update_data = customer_update.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_customer, key, value)
+        await db.commit()
+        await db.refresh(db_customer)
+    return db_customer
+
+async def delete_customer(db: AsyncSession, customer_id: int):
+    db_customer = await get_customer(db, customer_id)
+    if db_customer:
+        await db.delete(db_customer)
+        await db.commit()
+    return db_customer
+
+from sqlalchemy import select
+
 async def create_order(db: AsyncSession, order: schemas.OrderCreate):
-    total_amount = 0
-    for item in order.items:
-        product = await get_product(db, item.productId)
-        if not product or product.stockQuantity < item.quantity:
-            raise HTTPException(status_code=400, detail=f"Product {item.productId} not available or insufficient stock.")
-        total_amount += product.price * item.quantity
+    """
+    Creates an order in a single transaction.
+    - Fetches all products at once.
+    - Validates stock for all items.
+    - Creates the Order and OrderItems.
+    - Decrements stock quantities.
+    - Commits all changes together.
+    """
+    async with db.begin_nested():
+        product_ids = [item.productId for item in order.items]
+        result = await db.execute(select(models.Product).filter(models.Product.productId.in_(product_ids)))
+        products_in_db = {p.productId: p for p in result.scalars().all()}
 
-    db_order = models.Order(
-        customerId=order.customerId,
-        totalAmount=total_amount,
-        status=models.OrderStatusEnum.PENDING,
-    )
-    db.add(db_order)
-    await db.flush()
+        total_amount = 0
+        order_items_to_create = []
 
-    for item in order.items:
-        product = await get_product(db, item.productId)
-        db_order_item = models.OrderItem(
-            orderId=db_order.orderId,
-            productId=item.productId,
-            quantity=item.quantity,
-            priceAtPurchase=product.price
+        for item in order.items:
+            product = products_in_db.get(item.productId)
+            if not product:
+                raise HTTPException(status_code=404, detail=f"Product with ID {item.productId} not found.")
+            if product.stockQuantity < item.quantity:
+                raise HTTPException(status_code=400, detail=f"Insufficient stock for product {product.name} (ID: {item.productId}).")
+
+            total_amount += product.price * item.quantity
+            product.stockQuantity -= item.quantity  # Decrement stock
+
+            order_items_to_create.append(
+                models.OrderItem(
+                    productId=item.productId,
+                    quantity=item.quantity,
+                    priceAtPurchase=product.price
+                )
+            )
+
+        db_order = models.Order(
+            customerId=order.customerId,
+            totalAmount=total_amount,
+            status=models.OrderStatusEnum.PENDING,
+            items=order_items_to_create
         )
-        product.stockQuantity -= item.quantity
-        db.add(db_order_item)
+        db.add(db_order)
 
     await db.commit()
     await db.refresh(db_order)
     return db_order
 
+from sqlalchemy.orm import joinedload
+
 async def get_order(db: AsyncSession, order_id: int):
-    result = await db.execute(select(models.Order).filter(models.Order.orderId == order_id))
+    result = await db.execute(
+        select(models.Order)
+        .filter(models.Order.orderId == order_id)
+        .options(
+            joinedload(models.Order.customer),
+            joinedload(models.Order.items).joinedload(models.OrderItem.product)
+        )
+    )
     return result.scalar_one_or_none()
 
 async def get_orders(db: AsyncSession, skip: int = 0, limit: int = 100):
-    result = await db.execute(select(models.Order).offset(skip).limit(limit))
+    result = await db.execute(
+        select(models.Order)
+        .options(
+            joinedload(models.Order.customer),
+            joinedload(models.Order.items).joinedload(models.OrderItem.product)
+        )
+        .offset(skip)
+        .limit(limit)
+    )
     return result.scalars().all()
 
 async def update_order_status(db: AsyncSession, order_id: int, status: schemas.OrderStatus):
