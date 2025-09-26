@@ -19,7 +19,12 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="AzharStore API", version="0.1.0", lifespan=lifespan)
 
-origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(',')]
+# Hardcode the allowed origins to ensure stability
+origins = [
+    "https://beta.azhar.store",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
 app.add_middleware(
     CORSMiddleware,
