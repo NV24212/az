@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Customer } from '@/types';
 
+// --- Configuration ---
+const BASE_URL = 'https://api.azhar.store';
+
 // --- Type Definitions ---
 type CustomerData = Omit<Customer, 'customerId'>;
 
@@ -11,7 +14,7 @@ const getAuthToken = () => localStorage.getItem('admin_token');
 
 const fetchCustomers = async (): Promise<Customer[]> => {
   const token = getAuthToken();
-  const response = await fetch('/api/admin/customers/', {
+  const response = await fetch(`${BASE_URL}/api/admin/customers/`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!response.ok) throw new Error('Failed to fetch customers');
@@ -20,7 +23,7 @@ const fetchCustomers = async (): Promise<Customer[]> => {
 
 const createCustomer = async (customerData: CustomerData): Promise<Customer> => {
   const token = getAuthToken();
-  const response = await fetch('/api/admin/customers/', {
+  const response = await fetch(`${BASE_URL}/api/admin/customers/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -34,7 +37,7 @@ const createCustomer = async (customerData: CustomerData): Promise<Customer> => 
 
 const updateCustomer = async (data: { id: number; customerData: CustomerData }): Promise<Customer> => {
   const token = getAuthToken();
-  const response = await fetch(`/api/admin/customers/${data.id}`, {
+  const response = await fetch(`${BASE_URL}/api/admin/customers/${data.id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -48,7 +51,7 @@ const updateCustomer = async (data: { id: number; customerData: CustomerData }):
 
 const deleteCustomer = async (id: number): Promise<Customer> => {
   const token = getAuthToken();
-  const response = await fetch(`/api/admin/customers/${id}`, {
+  const response = await fetch(`${BASE_URL}/api/admin/customers/${id}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });
