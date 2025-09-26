@@ -1,5 +1,5 @@
 {
-  "name": "frontend",
+  "name": "az",
   "compatibility_date": "2025-09-17",
   "main": "dist/worker.js",
   "assets": {
