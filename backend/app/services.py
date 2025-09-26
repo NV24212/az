@@ -1,5 +1,7 @@
 import bcrypt
 import os
+import secrets
+import string
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
@@ -208,10 +210,12 @@ async def update_settings(db: AsyncSession, settings_update: schemas.StoreSettin
     if db_settings:
         update_data = settings_update.model_dump(exclude_unset=True)
 
-        if 'password' in update_data and update_data['password']:
-            hashed_password = get_password_hash(update_data['password'])
-            db_settings.hashed_password = hashed_password
-            del update_data['password']
+        # Handle password update separately to ensure it's not bypassed
+        if 'password' in update_data:
+            new_password = update_data.pop('password')
+            # Only update the password if a non-empty string is provided
+            if new_password:
+                db_settings.hashed_password = get_password_hash(new_password)
 
         for key, value in update_data.items():
             setattr(db_settings, key, value)
@@ -220,22 +224,35 @@ async def update_settings(db: AsyncSession, settings_update: schemas.StoreSettin
         await db.refresh(db_settings)
     return db_settings
 
+def generate_random_password(length: int = 16) -> str:
+    alphabet = string.ascii_letters + string.digits + string.punctuation
+    password = ''.join(secrets.choice(alphabet) for i in range(length))
+    return password
+
 async def initialize_database(db: AsyncSession):
     # This function is called on startup to ensure the store settings exist and are valid.
     store_settings = await get_settings(db)
 
-    default_password = "azhar2311"
-    hashed_password = get_password_hash(default_password)
+    # Check for initial admin password in environment variables
+    initial_password = os.getenv("AZHAR_ADMIN_INITIAL_PASSWORD")
+    password_to_set = None
 
     if store_settings is None:
-        print("--- No store settings found. Creating with default password. ---")
-        # If no settings exist, create them with default values
+        if not initial_password:
+            # Generate a random password if not set in environment
+            initial_password = generate_random_password()
+            print("--- Generated initial admin password. Please store it securely. ---")
+            print(f"Initial Admin Password: {initial_password}")
+
+        password_to_set = initial_password
+        hashed_password = get_password_hash(password_to_set)
+
+        print("--- No store settings found. Creating with initial password. ---")
         default_settings = models.StoreSettings(
             id=1,
             storeName="My Store",
             adminEmail=settings.AZHAR_ADMIN_EMAIL,
             hashed_password=hashed_password,
-            # Initialize other fields as needed
             storeDescription="Welcome to my store!",
             currency="USD",
             deliveryFee=5.00,
@@ -253,8 +270,13 @@ async def initialize_database(db: AsyncSession):
         db.add(default_settings)
 
     elif not store_settings.hashed_password:
-        print("--- Hashed password not found in existing settings. Setting default password. ---")
-        # If settings exist but the password column is empty, set the default password.
-        store_settings.hashed_password = hashed_password
+        if not initial_password:
+            initial_password = generate_random_password()
+            print("--- Hashed password not found. Generated a new random password. ---")
+            print(f"New Admin Password: {initial_password}")
+
+        password_to_set = initial_password
+        store_settings.hashed_password = get_password_hash(password_to_set)
+        print("--- Hashed password not found in existing settings. Setting new password. ---")
 
     await db.commit()

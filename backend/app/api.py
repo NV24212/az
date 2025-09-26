@@ -56,8 +56,9 @@ async def create_order_endpoint(order: schemas.OrderCreate, db: AsyncSession = D
         return await services.create_order(db=db, order=order)
     except HTTPException as e:
         raise e
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
+    except Exception:
+        # Log the exception details here for debugging if a logging system is in place
+        raise HTTPException(status_code=500, detail="An unexpected error occurred while creating the order.")
 
 
 # --- Admin Product Management Endpoints ---
