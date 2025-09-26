@@ -75,9 +75,16 @@ CREATE TABLE IF NOT EXISTS "StoreSettings" (
 );
 
 -- Insert a default settings row if one doesn't exist
-INSERT INTO "StoreSettings" ("id", "adminEmail")
-SELECT 1, 'admin@example.com'
-WHERE NOT EXISTS (SELECT 1 FROM "StoreSettings" WHERE "id" = 1);
+-- Add hashed_password column to StoreSettings if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'StoreSettings' AND column_name = 'hashed_password'
+    ) THEN
+        ALTER TABLE "StoreSettings" ADD COLUMN hashed_password VARCHAR;
+    END IF;
+END $$;
 
 -- Seed Data for Categories for initial setup
 INSERT INTO "Category" ("name") VALUES
