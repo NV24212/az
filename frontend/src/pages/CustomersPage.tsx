@@ -1,63 +1,15 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Customer } from '@/types';
-
-// --- Configuration ---
-const BASE_URL = 'https://api.azhar.store';
+import {
+  getAdminCustomers,
+  createCustomer,
+  updateCustomer,
+  deleteCustomer,
+} from '../lib/api';
 
 // --- Type Definitions ---
 type CustomerData = Omit<Customer, 'customerId'>;
-
-// --- API Helper Functions ---
-
-const getAuthToken = () => localStorage.getItem('admin_token');
-
-const fetchCustomers = async (): Promise<Customer[]> => {
-  const token = getAuthToken();
-  const response = await fetch(`${BASE_URL}/api/admin/customers/`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!response.ok) throw new Error('Failed to fetch customers');
-  return response.json();
-};
-
-const createCustomer = async (customerData: CustomerData): Promise<Customer> => {
-  const token = getAuthToken();
-  const response = await fetch(`${BASE_URL}/api/admin/customers/`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(customerData),
-  });
-  if (!response.ok) throw new Error('Failed to create customer');
-  return response.json();
-};
-
-const updateCustomer = async (data: { id: number; customerData: CustomerData }): Promise<Customer> => {
-  const token = getAuthToken();
-  const response = await fetch(`${BASE_URL}/api/admin/customers/${data.id}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(data.customerData),
-  });
-  if (!response.ok) throw new Error('Failed to update customer');
-  return response.json();
-};
-
-const deleteCustomer = async (id: number): Promise<Customer> => {
-  const token = getAuthToken();
-  const response = await fetch(`${BASE_URL}/api/admin/customers/${id}`, {
-    method: 'DELETE',
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!response.ok) throw new Error('Failed to delete customer');
-  return response.json();
-};
 
 // --- Customer Form Component (as a modal) ---
 
@@ -74,7 +26,10 @@ const CustomerFormModal = ({ customer, onSuccess, onClose }: CustomerFormProps) 
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: customer ? (data: CustomerData) => updateCustomer({ id: customer.customerId, customerData: data }) : createCustomer,
+    mutationFn: (data: CustomerData) =>
+      customer
+        ? updateCustomer(customer.customerId, data)
+        : createCustomer(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       onSuccess();
@@ -125,7 +80,7 @@ const CustomersPage = () => {
 
   const { data: customers, isPending, error } = useQuery<Customer[], Error>({
     queryKey: ['customers'],
-    queryFn: fetchCustomers,
+    queryFn: getAdminCustomers,
   });
 
   const deleteMutation = useMutation({
