@@ -41,6 +41,7 @@ origins = [
     "https://beta.azhar.store",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://az.m33320022.workers.dev",
 ]
 
 app.add_middleware(
