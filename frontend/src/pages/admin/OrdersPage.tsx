@@ -2,46 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import type { Order, OrderStatus } from '@/types';
-
-// --- Configuration ---
-const BASE_URL = 'https://api.azhar.store';
-
-// --- API Helper Functions ---
-
-const getAuthToken = () => localStorage.getItem('admin_token');
-
-const fetchOrders = async (): Promise<Order[]> => {
-  const token = getAuthToken();
-  const response = await fetch(`${BASE_URL}/api/admin/orders/`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!response.ok) throw new Error('Failed to fetch orders');
-  return response.json();
-};
-
-const updateOrderStatus = async ({ orderId, status }: { orderId: number; status: OrderStatus }): Promise<Order> => {
-  const token = getAuthToken();
-  const response = await fetch(`${BASE_URL}/api/admin/orders/${orderId}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ status }),
-  });
-  if (!response.ok) throw new Error('Failed to update order status');
-  return response.json();
-};
-
-const deleteOrder = async (orderId: number): Promise<Order> => {
-  const token = getAuthToken();
-  const response = await fetch(`${BASE_URL}/api/admin/orders/${orderId}`, {
-    method: 'DELETE',
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!response.ok) throw new Error('Failed to delete order');
-  return response.json();
-};
+import { getAdminOrders, updateOrderStatus, deleteOrder } from '../../lib/api';
 
 // --- Status Update Form (as a modal) ---
 
@@ -56,7 +17,8 @@ const StatusUpdateModal = ({ order, onSuccess, onClose }: StatusUpdateFormProps)
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: updateOrderStatus,
+    mutationFn: (variables: { orderId: number; status: OrderStatus }) =>
+      updateOrderStatus(variables.orderId, variables.status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       onSuccess();
@@ -101,7 +63,7 @@ const OrdersPage = () => {
 
   const { data: orders, isPending, error } = useQuery<Order[], Error>({
     queryKey: ['orders'],
-    queryFn: fetchOrders,
+    queryFn: getAdminOrders,
   });
 
   const deleteMutation = useMutation({

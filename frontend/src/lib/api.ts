@@ -129,6 +129,12 @@ export const createCategory = (category: Omit<Category, 'categoryId'>) => apiPos
 export const updateCategory = (categoryId: number, category: Omit<Category, 'categoryId'>) => apiPutAdmin<Category>(`/api/admin/categories/${categoryId}`, category);
 export const deleteCategory = (categoryId: number) => apiDeleteAdmin<Category>(`/api/admin/categories/${categoryId}`);
 
+// --- Customer Management API calls ---
+export const getAdminCustomers = () => apiGetAdmin<Customer[]>('/api/admin/customers/');
+export const createCustomer = (customer: Omit<Customer, 'customerId'>) => apiPostAdmin<Customer>('/api/admin/customers/', customer);
+export const updateCustomer = (customerId: number, customer: Omit<Customer, 'customerId'>) => apiPutAdmin<Customer>(`/api/admin/customers/${customerId}`, customer);
+export const deleteCustomer = (customerId: number) => apiDeleteAdmin<Customer>(`/api/admin/customers/${customerId}`);
+
 export interface StoreSettings {
   id: number;
   storeName: string | null;
