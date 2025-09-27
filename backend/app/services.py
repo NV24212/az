@@ -142,9 +142,16 @@ async def get_customer(db: AsyncSession, customer_id: int):
     result = await db.execute(select(models.Customer).filter(models.Customer.customerId == customer_id))
     return result.scalar_one_or_none()
 
+from sqlalchemy.orm import joinedload
+
 async def get_customers(db: AsyncSession, skip: int = 0, limit: int = 100):
-    result = await db.execute(select(models.Customer).offset(skip).limit(limit))
-    return result.scalars().all()
+    result = await db.execute(
+        select(models.Customer)
+        .options(joinedload(models.Customer.orders))
+        .offset(skip)
+        .limit(limit)
+    )
+    return result.scalars().unique().all()
 
 async def create_customer(db: AsyncSession, customer: schemas.CustomerCreate):
     db_customer = models.Customer(**customer.model_dump())
@@ -173,6 +180,11 @@ async def delete_customer(db: AsyncSession, customer_id: int):
 from sqlalchemy import select
 
 async def create_order(db: AsyncSession, order: schemas.OrderCreate):
+    # First, validate that the customer exists
+    customer = await get_customer(db, order.customerId)
+    if not customer:
+        raise HTTPException(status_code=404, detail=f"Customer with ID {order.customerId} not found.")
+
     async with db.begin_nested(): # Start a transaction
         # 1. Fetch all products at once and validate stock
         product_ids = [item.productId for item in order.items]
