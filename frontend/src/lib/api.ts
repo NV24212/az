@@ -1,37 +1,9 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.azhar.store'
 
-// --- Types based on backend schemas ---
-export interface Category {
-  categoryId: number;
-  name: string;
-}
+import type { Customer, Product, Order, OrderStatus, Category, StoreSettings } from '@/types';
 
-export interface Product {
-  productId: number;
-  name: string;
-  description: string | null;
-  price: number;
-  stockQuantity: number;
-  imageUrl: string | null;
-  categoryId: number;
-}
-
-export interface Customer {
-  customerId: number;
-  name: string;
-  phone: string;
-  address: string;
-}
-
-export type OrderStatus = 'PENDING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
-
-export interface Order {
-  orderId: number;
-  customerId: number;
-  status: OrderStatus;
-  totalAmount: number;
-  createdAt: string;
-}
+// Re-export types for convenience in other files if needed
+export type { Customer, Product, Order, OrderStatus, Category, StoreSettings };
 
 interface ApiError {
   detail?: string;
@@ -134,25 +106,6 @@ export const getAdminCustomers = () => apiGetAdmin<Customer[]>('/api/admin/custo
 export const createCustomer = (customer: Omit<Customer, 'customerId'>) => apiPostAdmin<Customer>('/api/admin/customers/', customer);
 export const updateCustomer = (customerId: number, customer: Omit<Customer, 'customerId'>) => apiPutAdmin<Customer>(`/api/admin/customers/${customerId}`, customer);
 export const deleteCustomer = (customerId: number) => apiDeleteAdmin<Customer>(`/api/admin/customers/${customerId}`);
-
-export interface StoreSettings {
-  id: number;
-  storeName: string | null;
-  storeDescription: string | null;
-  currency: string | null;
-  deliveryFee: number | null;
-  freeDeliveryMinimum: number | null;
-  codEnabled: boolean | null;
-  orderSuccessMessageEn: string | null;
-  orderSuccessMessageAr: string | null;
-  checkoutInstructionsEn: string | null;
-  checkoutInstructionsAr: string | null;
-  deliveryMessageEn: string | null;
-  deliveryMessageAr: string | null;
-  pickupMessageEn: string | null;
-  pickupMessageAr: string | null;
-  adminEmail: string | null;
-}
 
 // --- Order Management API calls ---
 export const getAdminOrders = () => apiGetAdmin<Order[]>('/api/admin/orders/');
