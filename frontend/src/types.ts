@@ -35,3 +35,27 @@ export interface Order {
   items: OrderItem[];
   customer: Customer;
 }
+
+export interface Category {
+  categoryId: number;
+  name: string;
+}
+
+export interface StoreSettings {
+  id: number;
+  storeName: string | null;
+  storeDescription: string | null;
+  currency: string | null;
+  deliveryFee: number | null;
+  freeDeliveryMinimum: number | null;
+  codEnabled: boolean | null;
+  orderSuccessMessageEn: string | null;
+  orderSuccessMessageAr: string | null;
+  checkoutInstructionsEn: string | null;
+  checkoutInstructionsAr: string | null;
+  deliveryMessageEn: string | null;
+  deliveryMessageAr: string | null;
+  pickupMessageEn: string | null;
+  pickupMessageAr: string | null;
+  adminEmail: string | null;
+}

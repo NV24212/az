@@ -1,9 +1,23 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.azhar.store'
 
-import type { Customer, Product, Order, OrderStatus, Category, StoreSettings } from '@/types';
+import type {
+  Customer,
+  Product,
+  Order,
+  OrderStatus,
+  Category,
+  StoreSettings,
+} from '@/types';
 
 // Re-export types for convenience in other files if needed
-export type { Customer, Product, Order, OrderStatus, Category, StoreSettings };
+export type {
+  Customer,
+  Product,
+  Order,
+  OrderStatus,
+  Category,
+  StoreSettings,
+};
 
 interface ApiError {
   detail?: string;
@@ -115,4 +129,3 @@ export const deleteOrder = (orderId: number) => apiDeleteAdmin<Order>(`/api/admi
 // --- Settings Management API calls ---
 export const getAdminSettings = () => apiGetAdmin<StoreSettings>('/api/admin/settings/');
 export const updateAdminSettings = (settings: Partial<StoreSettings>) => apiPutAdmin<StoreSettings>('/api/admin/settings/', settings);
-
