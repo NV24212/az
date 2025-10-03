@@ -1,0 +1,112 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - develop
+      - master
+  workflow_dispatch:
+
+jobs:
+  test-deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Run backend tests
+        run: python -m unittest discover backend/tests
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend Docker image to testing
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: ghcr.io/${{ github.repository_owner,, }}/${{ github.event.repository.name }}/backend:testing
+
+      - name: Deploy to testing environment
+        run: >
+          bash testing/deploy.sh
+          "${{ secrets.DOKPLOY_TESTING_INSTANCE_URL }}"
+          "${{ secrets.DOKPLOY_TESTING_TOKEN }}"
+          "${{ secrets.DOKPLOY_TESTING_BACKEND_APP_ID }}"
+          "${{ secrets.DOKPLOY_TESTING_FRONTEND_APP_ID }}"
+
+  approval-and-merge:
+    runs-on: ubuntu-latest
+    needs: test-deploy
+    environment: production-approval
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Merge develop into master
+        run: |
+          git fetch origin
+          git checkout master
+          git merge --no-ff origin/develop -m "chore: auto-merge develop into master [skip ci]"
+          git push origin master
+
+  production-deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Run backend tests
+        run: python -m unittest discover backend/tests
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend Docker image to production
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: ghcr.io/${{ github.repository_owner,, }}/${{ github.event.repository.name }}/backend:latest
+
+      - name: Deploy to production environment
+        run: >
+          bash production/deploy.sh
+          "${{ secrets.DOKPLOY_PRODUCTION_INSTANCE_URL }}"
+          "${{ secrets.DOKPLOY_PRODUCTION_TOKEN }}"
+          "${{ secrets.DOKPLOY_PRODUCTION_BACKEND_APP_ID }}"
+          "${{ secrets.DOKPLOY_PRODUCTION_FRONTEND_APP_ID }}"
