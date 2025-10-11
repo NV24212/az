@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Category } from '../lib/api';
 import { createCategory, updateCategory } from '../lib/api';
+import Modal from './Modal';
+import { useTranslation } from 'react-i18next';
+import { Loader2 } from 'lucide-react';
 
 interface CategoryFormModalProps {
   isOpen: boolean;
@@ -10,6 +13,7 @@ interface CategoryFormModalProps {
 }
 
 export default function CategoryFormModal({ isOpen, onClose, category }: CategoryFormModalProps) {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const queryClient = useQueryClient();
 
@@ -37,35 +41,34 @@ export default function CategoryFormModal({ isOpen, onClose, category }: Categor
     mutation.mutate({ name });
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
-      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-        <h2 className="text-xl font-bold mb-4">{category ? 'Edit Category' : 'Create New Category'}</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Category Name</label>
-            <input
-              type="text"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full mt-1 p-2 border rounded-md focus:ring-purple-500 focus:border-purple-500"
-              placeholder="e.g., Electronics"
-            />
-          </div>
-          <div className="flex justify-end space-x-2 pt-4">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded bg-slate-200 hover:bg-slate-300">
-              Cancel
-            </button>
-            <button type="submit" className="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-700" disabled={mutation.isPending}>
-              {mutation.isPending ? 'Saving...' : 'Save Category'}
-            </button>
-          </div>
-          {mutation.isError && <p className="text-red-500 mt-2">Error: {mutation.error.message}</p>}
-        </form>
-      </div>
-    </div>
+    <Modal isOpen={isOpen} onClose={onClose} title={category ? t('categoryForm.editTitle') : t('categoryForm.createTitle')}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-brand-secondary">{t('categoryForm.name')}</label>
+          <input
+            type="text"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full mt-1 p-2 bg-black/30 border border-brand-border rounded-lg focus:ring-brand-primary focus:border-brand-primary"
+            placeholder={t('categoryForm.placeholder')}
+          />
+        </div>
+        <div className="flex justify-end gap-4 pt-4">
+          <button type="button" onClick={onClose} className="bg-brand-border/10 hover:bg-brand-border/20 text-brand-primary font-bold py-2.5 px-5 rounded-lg transition-colors">
+            {t('common.cancel')}
+          </button>
+          <button
+            type="submit"
+            className="bg-brand-primary hover:bg-opacity-90 text-brand-background font-bold py-2.5 px-5 rounded-lg transition-colors transform active:scale-95 flex items-center justify-center w-32"
+            disabled={mutation.isPending}
+          >
+            {mutation.isPending ? <Loader2 className="animate-spin" /> : (category ? t('common.saveChanges') : t('common.create'))}
+          </button>
+        </div>
+        {mutation.isError && <p className="text-red-500 mt-2">Error: {mutation.error.message}</p>}
+      </form>
+    </Modal>
   );
 }
