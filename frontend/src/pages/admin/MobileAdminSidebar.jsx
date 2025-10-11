@@ -1,10 +1,9 @@
 import React from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { X, Home, LogOut } from 'lucide-react';
-import { logoUrl } from '../../data/site.js';
+import { X, LogOut, Settings } from 'lucide-react';
 
-const MobileAdminSidebar = ({ isOpen, onClose, user, navLinks, handleLogout }) => {
+const MobileAdminSidebar = ({ isOpen, onClose, navLinks, handleLogout }) => {
   const { t } = useTranslation();
 
   const handleLinkClick = () => {
@@ -26,35 +25,24 @@ const MobileAdminSidebar = ({ isOpen, onClose, user, navLinks, handleLogout }) =
         style={{ willChange: 'transform' }} // Animation optimization
       >
         <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between p-4 mb-4 border-b border-brand-border">
-            <div className="flex items-center gap-3">
-              <img src={logoUrl} alt="Logo" className="h-8 w-8 rounded-full object-cover" />
-              <span className="text-lg font-bold whitespace-nowrap text-brand-primary">{user?.name}</span>
-            </div>
+          <div className="flex items-center justify-between p-4 mb-4">
+            <h1 className="text-2xl font-bold text-brand-primary pt-2">AzharStore</h1>
             <button onClick={onClose} className="text-brand-text-secondary hover:text-brand-text">
               <X size={24} />
             </button>
           </div>
-
           <nav className="flex-grow px-2">
             <ul className="space-y-2">
-              <li>
-                <Link
-                  to="/"
-                  className="flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors duration-200 text-brand-text-secondary hover:bg-gray-100 hover:text-brand-text"
-                  onClick={handleLinkClick}
-                >
-                  <Home className="h-5 w-5 mr-3" />
-                  <span>{t('admin.nav.home')}</span>
-                </Link>
-              </li>
               {navLinks.map((link) => (
                 <li key={link.to}>
                   <NavLink
                     to={link.to}
+                    end={link.to === '/admin'} // Exact match for Dashboard
                     className={({ isActive }) =>
                       `flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
-                        isActive ? 'bg-brand-primary-light text-brand-primary' : 'text-brand-text-secondary hover:bg-gray-100 hover:text-brand-text'
+                        isActive
+                          ? 'bg-brand-primary-light text-brand-primary'
+                          : 'text-brand-text-secondary hover:bg-brand-primary-light/60 hover:text-brand-primary'
                       }`
                     }
                     onClick={handleLinkClick}
@@ -68,13 +56,27 @@ const MobileAdminSidebar = ({ isOpen, onClose, user, navLinks, handleLogout }) =
           </nav>
 
           <div className="px-2 py-4 mt-auto">
-            <div className="border-t border-brand-border pt-4">
+            <div className="border-t border-brand-border pt-4 space-y-2">
+              <Link
+                to="/admin/settings"
+                onClick={handleLinkClick}
+                className={({ isActive }) =>
+                  `flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
+                    isActive
+                      ? 'bg-brand-primary-light text-brand-primary'
+                      : 'text-brand-text-secondary hover:bg-brand-primary-light/60 hover:text-brand-primary'
+                  }`
+                }
+              >
+                <Settings className="h-5 w-5 mr-3" />
+                <span>{t('admin.nav.settings')}</span>
+              </Link>
               <button
                 onClick={() => {
                   handleLinkClick();
                   handleLogout();
                 }}
-                className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-brand-text-secondary hover:bg-gray-100 hover:text-brand-text rounded-lg transition-colors duration-200"
+                className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-brand-text-secondary hover:bg-brand-primary-light/60 hover:text-brand-primary rounded-lg transition-colors duration-200"
               >
                 <LogOut className="h-5 w-5 mr-3" />
                 <span>{t('Logout')}</span>
