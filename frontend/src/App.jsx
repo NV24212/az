@@ -158,49 +158,10 @@ const Layout = ({ children }) => {
 };
 
 const App = () => {
-  const { user } = useContext(AuthContext);
-
-  useEffect(() => {
-    const gaMeasurementId = import.meta.env.VITE_GA_MEASUREMENT_ID;
-    if (gaMeasurementId) {
-      ReactGA.initialize(gaMeasurementId);
-    }
-  }, []);
-
   return (
     <CacheBusterProvider>
       <Layout>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={user ? <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} /> : <Login />} />
-          <Route path="/weeks" element={<Weeks />} />
-          <Route path="/weeks/:id" element={<WeekDetail />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
-
-          {/* Protected Routes for Students */}
-          <Route element={<ProtectedRoute allowedRoles={['student']} />}>
-            <Route path="/dashboard" element={<StudentLayout />}>
-              <Route index element={<Navigate to="points" />} />
-              <Route path="points" element={<StudentPoints />} />
-            </Route>
-          </Route>
-
-          {/* Protected Routes for Admin */}
-          <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']} />}>
-            <Route element={<AdminLayout />}>
-              <Route index element={<AdminDashboard />} />
-              <Route path="products" element={<ProductsPage />} />
-              <Route path="categories" element={<CategoriesPage />} />
-              <Route path="orders" element={<OrdersPage />} />
-              <Route path="customers" element={<CustomersPage />} />
-              <Route path="settings" element={<SettingsPage />} />
-            </Route>
-          </Route>
-
-          {/* Fallback Route */}
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
+        <Outlet />
       </Layout>
     </CacheBusterProvider>
   );
