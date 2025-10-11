@@ -36,17 +36,9 @@ async def db_session_middleware(request: Request, call_next):
             await session.close()
     return response
 
-# Hardcode the allowed origins to ensure stability
-origins = [
-    "https://beta.azhar.store",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://az.m33320022.workers.dev",
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
