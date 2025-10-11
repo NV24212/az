@@ -1,12 +1,9 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@layer base {
-  html, body, #root {
-    height: 100%;
-  }
-  body {
-    @apply bg-brand-background text-brand-text antialiased;
-  }
+@theme {
+  --color-brand: #742370;
+}
+
+html, body, #root {
+  height: 100%;
 }
