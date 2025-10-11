@@ -1,19 +1,19 @@
-import React, { createContext } from 'react';
+import React, { createContext, useCallback, useState } from 'react';
 
-export const CacheBusterContext = createContext();
+const CacheBusterContext = createContext();
 
-export const CacheBusterProvider = ({ children }) => {
-  // A non-functional provider to satisfy the build.
-  // In a real application, this would have logic to check for new versions.
-  const value = {
-      isLatestVersion: true,
-      loading: false,
-      refreshCacheAndReload: () => window.location.reload(true),
-  };
+const CacheBusterProvider = ({ children }) => {
+  const [cacheKey, setCacheKey] = useState(Date.now());
+
+  const bustCache = useCallback(() => {
+    setCacheKey(Date.now());
+  }, []);
 
   return (
-    <CacheBusterContext.Provider value={value}>
+    <CacheBusterContext.Provider value={{ cacheKey, bustCache }}>
       {children}
     </CacheBusterContext.Provider>
   );
 };
+
+export { CacheBusterContext, CacheBusterProvider };
