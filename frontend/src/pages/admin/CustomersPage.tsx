@@ -1,17 +1,12 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Customer } from '@/types';
-import {
-  getAdminCustomers,
-  createCustomer,
-  updateCustomer,
-  deleteCustomer,
-} from '../../lib/api';
+import { getAdminCustomers, createCustomer, updateCustomer, deleteCustomer } from '../../lib/api';
+import Modal from '../../components/Modal';
+import LoadingScreen from '../../components/LoadingScreen';
+import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 
-// --- Type Definitions ---
 type CustomerData = Omit<Customer, 'customerId'>;
-
-// --- Customer Form Component (as a modal) ---
 
 interface CustomerFormProps {
   customer: Customer | null;
@@ -19,7 +14,7 @@ interface CustomerFormProps {
   onClose: () => void;
 }
 
-const CustomerFormModal = ({ customer, onSuccess, onClose }: CustomerFormProps) => {
+const CustomerForm = ({ customer, onSuccess, onClose }: CustomerFormProps) => {
   const [name, setName] = useState(customer?.name || '');
   const [phone, setPhone] = useState(customer?.phone || '');
   const [address, setAddress] = useState(customer?.address || '');
@@ -27,9 +22,7 @@ const CustomerFormModal = ({ customer, onSuccess, onClose }: CustomerFormProps) 
 
   const mutation = useMutation({
     mutationFn: (data: CustomerData) =>
-      customer
-        ? updateCustomer(customer.customerId, data)
-        : createCustomer(data),
+      customer ? updateCustomer(customer.customerId, data) : createCustomer(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       onSuccess();
@@ -43,35 +36,28 @@ const CustomerFormModal = ({ customer, onSuccess, onClose }: CustomerFormProps) 
   };
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-      <div style={{ background: 'white', padding: '2rem', borderRadius: '8px', minWidth: '400px' }}>
-        <h2>{customer ? 'Edit Customer' : 'Add New Customer'}</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="name">Name</label>
-            <input id="name" value={name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc' }}/>
-          </div>
-          <div>
-            <label htmlFor="phone">Phone</label>
-            <input id="phone" value={phone} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc' }}/>
-          </div>
-          <div>
-            <label htmlFor="address">Address</label>
-            <input id="address" value={address} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAddress(e.target.value)} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc' }}/>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '1rem' }}>
-            <button type="button" onClick={onClose}>Cancel</button>
-            <button type="submit" disabled={mutation.isPending} style={{ background: '#333', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '4px' }}>
-              {mutation.isPending ? 'Saving...' : 'Save Customer'}
-            </button>
-          </div>
-        </form>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label htmlFor="name" className="block text-sm font-medium text-brand-text-secondary mb-2">Name</label>
+        <input id="name" value={name} onChange={(e) => setName(e.target.value)} required className="w-full bg-white border border-brand-border text-brand-text p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/50" />
       </div>
-    </div>
+      <div>
+        <label htmlFor="phone" className="block text-sm font-medium text-brand-text-secondary mb-2">Phone</label>
+        <input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} required className="w-full bg-white border border-brand-border text-brand-text p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/50" />
+      </div>
+      <div>
+        <label htmlFor="address" className="block text-sm font-medium text-brand-text-secondary mb-2">Address</label>
+        <input id="address" value={address} onChange={(e) => setAddress(e.target.value)} required className="w-full bg-white border border-brand-border text-brand-text p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/50" />
+      </div>
+      <div className="flex justify-end gap-4 pt-4">
+        <button type="button" onClick={onClose} className="bg-gray-100 hover:bg-gray-200 text-brand-text font-bold py-2.5 px-5 rounded-lg transition-colors">Cancel</button>
+        <button type="submit" disabled={mutation.isPending} className="bg-brand-primary hover:bg-opacity-90 text-white font-bold py-2.5 px-5 rounded-lg transition-colors flex items-center justify-center w-32">
+          {mutation.isPending ? <Loader2 className="animate-spin" /> : 'Save Customer'}
+        </button>
+      </div>
+    </form>
   );
 };
-
-// --- Main Customers Page Component ---
 
 const CustomersPage = () => {
   const [isFormOpen, setFormOpen] = useState(false);
@@ -96,65 +82,72 @@ const CustomersPage = () => {
     }
   };
 
-  if (isPending) return <div>Loading customers...</div>;
-  if (error) return <div>Error: {error.message}</div>;
+  if (isPending) return <LoadingScreen />;
+  if (error) return <div className="bg-red-100 border border-red-200 text-red-800 p-4 rounded-lg">Error: {error.message}</div>;
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h1 style={{ fontSize: '2rem', fontWeight: 'bold' }}>Customers</h1>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-brand-text">Customers</h1>
         <button
           onClick={() => {
             setSelectedCustomer(null);
             setFormOpen(true);
           }}
-          style={{ background: '#333', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '4px' }}
+          className="flex items-center justify-center gap-2 bg-brand-primary text-white font-bold py-2.5 px-5 rounded-lg hover:bg-opacity-90 transition-all"
         >
+          <Plus size={20} />
           Add Customer
         </button>
       </div>
 
-      {isFormOpen && (
-        <CustomerFormModal
+      <Modal
+        isOpen={isFormOpen}
+        onClose={() => setFormOpen(false)}
+        title={selectedCustomer ? 'Edit Customer' : 'Add New Customer'}
+      >
+        <CustomerForm
           customer={selectedCustomer}
           onSuccess={() => setFormOpen(false)}
           onClose={() => setFormOpen(false)}
         />
-      )}
+      </Modal>
 
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Name</th>
-            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Phone</th>
-            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Address</th>
-            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {customers?.map((customer) => (
-            <tr key={customer.customerId}>
-              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{customer.name}</td>
-              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{customer.phone}</td>
-              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{customer.address}</td>
-              <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                <button
-                  onClick={() => {
-                    setSelectedCustomer(customer);
-                    setFormOpen(true);
-                  }}
-                  style={{ marginRight: '8px' }}
-                >
-                  Edit
-                </button>
-                <button onClick={() => handleDelete(customer.customerId)}>
-                  Delete
-                </button>
-              </td>
+      <div className="bg-white rounded-xl border border-brand-border shadow-card overflow-hidden">
+        <table className="w-full text-sm text-left text-brand-text">
+          <thead className="bg-gray-50 border-b border-brand-border">
+            <tr>
+              <th scope="col" className="p-4">Name</th>
+              <th scope="col" className="p-4">Phone</th>
+              <th scope="col" className="p-4">Address</th>
+              <th scope="col" className="p-4">Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {customers?.map((customer) => (
+              <tr key={customer.customerId} className="border-b border-brand-border last:border-b-0">
+                <td className="p-4">{customer.name}</td>
+                <td className="p-4">{customer.phone}</td>
+                <td className="p-4">{customer.address}</td>
+                <td className="p-4 flex gap-4">
+                  <button
+                    onClick={() => {
+                      setSelectedCustomer(customer);
+                      setFormOpen(true);
+                    }}
+                    className="text-brand-primary hover:underline"
+                  >
+                    <Edit size={18} />
+                  </button>
+                  <button onClick={() => handleDelete(customer.customerId)} className="text-red-600 hover:underline">
+                    <Trash2 size={18} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
