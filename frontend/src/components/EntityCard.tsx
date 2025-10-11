@@ -3,7 +3,7 @@ import { Edit, Trash2 } from 'lucide-react';
 
 interface EntityCardProps {
   title: string;
-  children: React.ReactNode;
+  children?: React.ReactNode;
   onEdit?: () => void;
   onDelete?: () => void;
 }
