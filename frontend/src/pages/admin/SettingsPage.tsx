@@ -75,7 +75,7 @@ const SettingsPage = () => {
       <SettingsCard title="Admin Account">
          <div className="space-y-4">
           <TextInput label="Admin Email" id="adminEmail" type="email" value={formData.adminEmail || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, adminEmail: e.target.value})} />
-          <TextInput label="New Password" id="newPassword" type="password" placeholder="Leave blank to keep current password" onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, password: e.target.value})} />
+          <TextInput label="New Password" id="newPassword" type="password" placeholder="Leave blank to keep current password" onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, password: e.target.value } as any)} />
         </div>
       </SettingsCard>
 

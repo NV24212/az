@@ -19,7 +19,7 @@ export default function AdminDashboard() {
     queryFn: getAdminOrders,
   });
 
-  const { data: products, isLoading: loadingProducts } = useQuery({
+  const { isLoading: loadingProducts } = useQuery({
     queryKey: ['adminProducts'],
     queryFn: getAdminProducts,
   });
