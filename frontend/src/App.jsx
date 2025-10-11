@@ -10,12 +10,13 @@ import WeekDetail from './pages/WeekDetail.jsx';
 import Login from './pages/Login.jsx';
 import Leaderboard from './pages/Leaderboard.jsx';
 import ProtectedRoute from './components/ProtectedRoute';
-import AdminLayout from './pages/admin/AdminLayout.jsx';
-import AdminIndexRedirect from './pages/admin/AdminIndexRedirect.jsx';
-import UserManagement from './pages/admin/UserManagement.jsx';
-import WeekManagement from './pages/admin/WeekManagement.jsx';
-import PointsManagement from './pages/admin/PointsManagement.jsx';
-import Analytics from './pages/admin/Analytics.jsx';
+import AdminLayout from './pages/admin/AdminLayout.tsx';
+import AdminDashboard from './pages/admin/AdminDashboard.tsx';
+import ProductsPage from './pages/admin/ProductsPage.tsx';
+import CategoriesPage from './pages/admin/CategoriesPage.tsx';
+import OrdersPage from './pages/admin/OrdersPage.tsx';
+import CustomersPage from './pages/admin/CustomersPage.tsx';
+import SettingsPage from './pages/admin/SettingsPage.tsx';
 import StudentLayout from './pages/student/StudentLayout.jsx';
 import StudentPoints from './pages/student/StudentPoints.jsx';
 import { logoUrl } from './data/site.js';
@@ -188,11 +189,12 @@ const App = () => {
           {/* Protected Routes for Admin */}
           <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']} />}>
             <Route element={<AdminLayout />}>
-              <Route index element={<AdminIndexRedirect />} />
-              <Route path="users" element={<UserManagement />} />
-              <Route path="weeks" element={<WeekManagement />} />
-              <Route path="points" element={<PointsManagement />} />
-              <Route path="analytics" element={<Analytics />} />
+              <Route index element={<AdminDashboard />} />
+              <Route path="products" element={<ProductsPage />} />
+              <Route path="categories" element={<CategoriesPage />} />
+              <Route path="orders" element={<OrdersPage />} />
+              <Route path="customers" element={<CustomersPage />} />
+              <Route path="settings" element={<SettingsPage />} />
             </Route>
           </Route>
 
