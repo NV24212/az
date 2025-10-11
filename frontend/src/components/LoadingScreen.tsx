@@ -1,7 +1,10 @@
 import React from 'react';
-import { logoUrl } from '../data/site';
 
-const LoadingScreen = ({ fullScreen = true }) => {
+interface LoadingScreenProps {
+  fullScreen?: boolean;
+}
+
+const LoadingScreen: React.FC<LoadingScreenProps> = ({ fullScreen = true }) => {
   const wrapperClasses = fullScreen
     ? 'fixed inset-0 flex items-center justify-center bg-brand-background z-50'
     : 'flex items-center justify-center py-20';
@@ -9,11 +12,7 @@ const LoadingScreen = ({ fullScreen = true }) => {
   return (
     <div className={wrapperClasses}>
       <div className="flex flex-col items-center gap-4">
-        <img
-          src={logoUrl}
-          alt="Loading..."
-          className="h-16 w-16 rounded-full object-cover animate-pulse-subtle"
-        />
+        <div className="w-16 h-16 border-4 border-brand-primary border-t-transparent rounded-full animate-spin"></div>
       </div>
     </div>
   );

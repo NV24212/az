@@ -3,8 +3,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Product } from '../../lib/api';
 import { getAdminProducts, getAdminCategories, deleteProduct } from '../../lib/api';
 import ProductFormModal from '../../components/ProductFormModal';
+import LoadingScreen from '../../components/LoadingScreen';
+import EntityCard from '../../components/EntityCard';
+import { useTranslation } from 'react-i18next';
+import { Plus } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export default function ProductsPage() {
+  const { t } = useTranslation();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const queryClient = useQueryClient();
@@ -37,7 +43,7 @@ export default function ProductsPage() {
   };
 
   const handleDelete = (productId: number) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
+    if (window.confirm(t('productsPage.confirmDelete'))) {
       deleteMutation.mutate(productId);
     }
   };
@@ -46,48 +52,57 @@ export default function ProductsPage() {
     return categories?.find(c => c.categoryId === categoryId)?.name || '...';
   };
 
-  if (isLoading || isLoadingCategories) return <p>Loading...</p>;
+  if (isLoading || isLoadingCategories) return <LoadingScreen fullScreen={false} />;
   if (isError) return <p className="text-red-500">Error fetching products: {error.message}</p>;
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+    },
+  };
+
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Product Management</h1>
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-brand-primary">{t('productsPage.title')}</h1>
         <button
           onClick={() => handleOpenModal(null)}
-          className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700"
+          className="flex items-center justify-center gap-2 bg-brand-primary text-brand-background font-bold py-2.5 px-5 rounded-lg hover:bg-opacity-90 transition-all duration-200 transform active:scale-95"
         >
-          + New Product
+          <Plus size={20} /> {t('productsPage.newProduct')}
         </button>
       </div>
 
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-slate-200">
-          <thead className="bg-slate-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Category</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Price</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Stock</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-slate-200">
-            {products?.map((product) => (
-              <tr key={product.productId}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{product.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{getCategoryName(product.categoryId)}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${product.price.toFixed(2)}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{product.stockQuantity}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button onClick={() => handleOpenModal(product)} className="text-purple-600 hover:text-purple-900 mr-4">Edit</button>
-                  <button onClick={() => handleDelete(product.productId)} className="text-red-600 hover:text-red-900">Delete</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <motion.div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6" variants={itemVariants}>
+        {products?.map((product) => (
+          <EntityCard
+            key={product.productId}
+            title={product.name}
+            onEdit={() => handleOpenModal(product)}
+            onDelete={() => handleDelete(product.productId)}
+          >
+            <p className="text-brand-secondary">{t('productsPage.category')}: {getCategoryName(product.categoryId)}</p>
+            <p className="text-brand-secondary">{t('productsPage.price')}: ${product.price.toFixed(2)}</p>
+            <p className="text-brand-secondary">{t('productsPage.stock')}: {product.stockQuantity}</p>
+          </EntityCard>
+        ))}
+      </motion.div>
 
       {isModalOpen && (
         <ProductFormModal
@@ -97,6 +112,6 @@ export default function ProductsPage() {
           categories={categories || []}
         />
       )}
-    </div>
+    </motion.div>
   );
 }

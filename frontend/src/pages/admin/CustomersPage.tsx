@@ -1,80 +1,20 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Customer } from '@/types';
-import {
-  getAdminCustomers,
-  createCustomer,
-  updateCustomer,
-  deleteCustomer,
-} from '../../lib/api';
-
-// --- Type Definitions ---
-type CustomerData = Omit<Customer, 'customerId'>;
-
-// --- Customer Form Component (as a modal) ---
-
-interface CustomerFormProps {
-  customer: Customer | null;
-  onSuccess: () => void;
-  onClose: () => void;
-}
-
-const CustomerFormModal = ({ customer, onSuccess, onClose }: CustomerFormProps) => {
-  const [name, setName] = useState(customer?.name || '');
-  const [phone, setPhone] = useState(customer?.phone || '');
-  const [address, setAddress] = useState(customer?.address || '');
-  const queryClient = useQueryClient();
-
-  const mutation = useMutation({
-    mutationFn: (data: CustomerData) =>
-      customer
-        ? updateCustomer(customer.customerId, data)
-        : createCustomer(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
-      onSuccess();
-    },
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const customerData: CustomerData = { name, phone, address };
-    mutation.mutate(customerData);
-  };
-
-  return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-      <div style={{ background: 'white', padding: '2rem', borderRadius: '8px', minWidth: '400px' }}>
-        <h2>{customer ? 'Edit Customer' : 'Add New Customer'}</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="name">Name</label>
-            <input id="name" value={name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc' }}/>
-          </div>
-          <div>
-            <label htmlFor="phone">Phone</label>
-            <input id="phone" value={phone} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc' }}/>
-          </div>
-          <div>
-            <label htmlFor="address">Address</label>
-            <input id="address" value={address} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAddress(e.target.value)} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc' }}/>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '1rem' }}>
-            <button type="button" onClick={onClose}>Cancel</button>
-            <button type="submit" disabled={mutation.isPending} style={{ background: '#333', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '4px' }}>
-              {mutation.isPending ? 'Saving...' : 'Save Customer'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-// --- Main Customers Page Component ---
+import { getAdminCustomers, deleteCustomer } from '../../lib/api';
+import LoadingScreen from '../../components/LoadingScreen';
+import EntityCard from '../../components/EntityCard';
+import ConfirmationModal from '../../components/ConfirmationModal';
+import CustomerFormModal from '../../components/CustomerFormModal';
+import { useTranslation } from 'react-i18next';
+import { Plus } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const CustomersPage = () => {
+  const { t } = useTranslation();
   const [isFormOpen, setFormOpen] = useState(false);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [deletingCustomerId, setDeletingCustomerId] = useState<number | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const queryClient = useQueryClient();
 
@@ -91,71 +31,88 @@ const CustomersPage = () => {
   });
 
   const handleDelete = (id: number) => {
-    if (window.confirm('Are you sure you want to delete this customer?')) {
-      deleteMutation.mutate(id);
-    }
+    setDeletingCustomerId(id);
+    setIsConfirmModalOpen(true);
   };
 
-  if (isPending) return <div>Loading customers...</div>;
+  const handleConfirmDelete = () => {
+    if (deletingCustomerId) {
+      deleteMutation.mutate(deletingCustomerId);
+    }
+    setIsConfirmModalOpen(false);
+    setDeletingCustomerId(null);
+  };
+
+  const handleOpenModal = (customer: Customer | null) => {
+    setSelectedCustomer(customer);
+    setFormOpen(true);
+  };
+
+  if (isPending) return <LoadingScreen fullScreen={false} />;
   if (error) return <div>Error: {error.message}</div>;
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+    },
+  };
+
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h1 style={{ fontSize: '2rem', fontWeight: 'bold' }}>Customers</h1>
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-brand-primary">{t('customersPage.title')}</h1>
         <button
-          onClick={() => {
-            setSelectedCustomer(null);
-            setFormOpen(true);
-          }}
-          style={{ background: '#333', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '4px' }}
+          onClick={() => handleOpenModal(null)}
+          className="flex items-center justify-center gap-2 bg-brand-primary text-brand-background font-bold py-2.5 px-5 rounded-lg hover:bg-opacity-90 transition-all duration-200 transform active:scale-95"
         >
-          Add Customer
+          <Plus size={20} /> {t('customersPage.newCustomer')}
         </button>
       </div>
 
-      {isFormOpen && (
-        <CustomerFormModal
-          customer={selectedCustomer}
-          onSuccess={() => setFormOpen(false)}
-          onClose={() => setFormOpen(false)}
-        />
-      )}
+      <motion.div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6" variants={itemVariants}>
+        {customers?.map((customer) => (
+          <EntityCard
+            key={customer.customerId}
+            title={customer.name}
+            onEdit={() => handleOpenModal(customer)}
+            onDelete={() => handleDelete(customer.customerId)}
+          >
+            <p className="text-brand-secondary">{t('customersPage.phone')}: {customer.phone}</p>
+            <p className="text-brand-secondary">{t('customersPage.address')}: {customer.address}</p>
+          </EntityCard>
+        ))}
+      </motion.div>
 
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Name</th>
-            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Phone</th>
-            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Address</th>
-            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {customers?.map((customer) => (
-            <tr key={customer.customerId}>
-              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{customer.name}</td>
-              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{customer.phone}</td>
-              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{customer.address}</td>
-              <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                <button
-                  onClick={() => {
-                    setSelectedCustomer(customer);
-                    setFormOpen(true);
-                  }}
-                  style={{ marginRight: '8px' }}
-                >
-                  Edit
-                </button>
-                <button onClick={() => handleDelete(customer.customerId)}>
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+      <CustomerFormModal
+        isOpen={isFormOpen}
+        onClose={() => setFormOpen(false)}
+        customer={selectedCustomer}
+      />
+
+      <ConfirmationModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title={t('customersPage.confirmDeleteTitle')}
+        message={t('customersPage.confirmDeleteMessage')}
+      />
+    </motion.div>
   );
 };
 

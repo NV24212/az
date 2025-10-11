@@ -2,11 +2,14 @@ import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Product, Category } from '../lib/api';
 import { createProduct, updateProduct } from '../lib/api';
+import Modal from './Modal';
+import { useTranslation } from 'react-i18next';
+import { Loader2 } from 'lucide-react';
 
 interface ProductFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  product?: Product | null; // Product data for editing, null for creating
+  product?: Product | null;
   categories: Category[];
 }
 
@@ -20,6 +23,7 @@ const emptyProduct: Omit<Product, 'productId'> = {
 };
 
 export default function ProductFormModal({ isOpen, onClose, product, categories }: ProductFormModalProps) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState<Omit<Product, 'productId'>>(emptyProduct);
   const queryClient = useQueryClient();
 
@@ -57,94 +61,93 @@ export default function ProductFormModal({ isOpen, onClose, product, categories 
     mutation.mutate(formData);
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
-      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg">
-        <h2 className="text-xl font-bold mb-4">{product ? 'Edit Product' : 'Create New Product'}</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700">Name</label>
-              <input
-                type="text"
-                required
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full mt-1 p-2 border rounded-md focus:ring-purple-500 focus:border-purple-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700">Category</label>
-              <select
-                required
-                value={formData.categoryId}
-                onChange={(e) => setFormData({ ...formData, categoryId: Number(e.target.value) })}
-                className="w-full mt-1 p-2 border rounded-md focus:ring-purple-500 focus:border-purple-500"
-              >
-                <option value={0} disabled>Select a category</option>
-                {categories.map((cat) => (
-                  <option key={cat.categoryId} value={cat.categoryId}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-slate-700">Description</label>
-              <textarea
-                value={formData.description || ''}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full mt-1 p-2 border rounded-md focus:ring-purple-500 focus:border-purple-500"
-                rows={3}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700">Price</label>
-              <input
-                type="number"
-                required
-                step="0.01"
-                min="0"
-                value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
-                className="w-full mt-1 p-2 border rounded-md focus:ring-purple-500 focus:border-purple-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700">Stock Quantity</label>
-              <input
-                type="number"
-                required
-                min="0"
-                value={formData.stockQuantity}
-                onChange={(e) => setFormData({ ...formData, stockQuantity: Number(e.target.value) })}
-                className="w-full mt-1 p-2 border rounded-md focus:ring-purple-500 focus:border-purple-500"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-slate-700">Image URL</label>
-              <input
-                type="text"
-                value={formData.imageUrl || ''}
-                onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                className="w-full mt-1 p-2 border rounded-md focus:ring-purple-500 focus:border-purple-500"
-                placeholder="https://example.com/image.jpg"
-              />
-            </div>
+    <Modal isOpen={isOpen} onClose={onClose} title={product ? t('productForm.editTitle') : t('productForm.createTitle')}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-brand-secondary">{t('productForm.name')}</label>
+            <input
+              type="text"
+              required
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full mt-1 p-2 bg-black/30 border border-brand-border rounded-lg focus:ring-brand-primary focus:border-brand-primary"
+            />
           </div>
-          <div className="flex justify-end space-x-2 pt-4">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded bg-slate-200 hover:bg-slate-300">
-              Cancel
-            </button>
-            <button type="submit" className="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-700" disabled={mutation.isPending}>
-              {mutation.isPending ? 'Saving...' : 'Save Product'}
-            </button>
+          <div>
+            <label className="block text-sm font-medium text-brand-secondary">{t('productForm.category')}</label>
+            <select
+              required
+              value={formData.categoryId}
+              onChange={(e) => setFormData({ ...formData, categoryId: Number(e.target.value) })}
+              className="w-full mt-1 p-2 bg-black/30 border border-brand-border rounded-lg focus:ring-brand-primary focus:border-brand-primary"
+            >
+              <option value={0} disabled>{t('productForm.selectCategory')}</option>
+              {categories.map((cat) => (
+                <option key={cat.categoryId} value={cat.categoryId}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
           </div>
-          {mutation.isError && <p className="text-red-500 mt-2">Error: {mutation.error.message}</p>}
-        </form>
-      </div>
-    </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-brand-secondary">{t('productForm.description')}</label>
+            <textarea
+              value={formData.description || ''}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="w-full mt-1 p-2 bg-black/30 border border-brand-border rounded-lg focus:ring-brand-primary focus:border-brand-primary"
+              rows={3}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-brand-secondary">{t('productForm.price')}</label>
+            <input
+              type="number"
+              required
+              step="0.01"
+              min="0"
+              value={formData.price}
+              onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
+              className="w-full mt-1 p-2 bg-black/30 border border-brand-border rounded-lg focus:ring-brand-primary focus:border-brand-primary"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-brand-secondary">{t('productForm.stock')}</label>
+            <input
+              type="number"
+              required
+              min="0"
+              value={formData.stockQuantity}
+              onChange={(e) => setFormData({ ...formData, stockQuantity: Number(e.target.value) })}
+              className="w-full mt-1 p-2 bg-black/30 border border-brand-border rounded-lg focus:ring-brand-primary focus:border-brand-primary"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-brand-secondary">{t('productForm.imageUrl')}</label>
+            <input
+              type="text"
+              value={formData.imageUrl || ''}
+              onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+              className="w-full mt-1 p-2 bg-black/30 border border-brand-border rounded-lg focus:ring-brand-primary focus:border-brand-primary"
+              placeholder="https://example.com/image.jpg"
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-4 pt-4">
+          <button type="button" onClick={onClose} className="bg-brand-border/10 hover:bg-brand-border/20 text-brand-primary font-bold py-2.5 px-5 rounded-lg transition-colors">
+            {t('common.cancel')}
+          </button>
+          <button
+            type="submit"
+            className="bg-brand-primary hover:bg-opacity-90 text-brand-background font-bold py-2.5 px-5 rounded-lg transition-colors transform active:scale-95 flex items-center justify-center w-32"
+            disabled={mutation.isPending}
+          >
+            {mutation.isPending ? <Loader2 className="animate-spin" /> : (product ? t('common.saveChanges') : t('common.create'))}
+          </button>
+        </div>
+        {mutation.isError && <p className="text-red-500 mt-2">Error: {mutation.error.message}</p>}
+      </form>
+    </Modal>
   );
 }

@@ -1,62 +1,20 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import type { Order, OrderStatus } from '@/types';
-import { getAdminOrders, updateOrderStatus, deleteOrder } from '../../lib/api';
-
-// --- Status Update Form (as a modal) ---
-
-interface StatusUpdateFormProps {
-  order: Order;
-  onSuccess: () => void;
-  onClose: () => void;
-}
-
-const StatusUpdateModal = ({ order, onSuccess, onClose }: StatusUpdateFormProps) => {
-  const [status, setStatus] = useState<OrderStatus>(order.status);
-  const queryClient = useQueryClient();
-
-  const mutation = useMutation({
-    mutationFn: (variables: { orderId: number; status: OrderStatus }) =>
-      updateOrderStatus(variables.orderId, variables.status),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
-      onSuccess();
-    },
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    mutation.mutate({ orderId: order.orderId, status });
-  };
-
-  return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-      <div style={{ background: 'white', padding: '2rem', borderRadius: '8px', minWidth: '400px' }}>
-        <h2>Update Order #{order.orderId}</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <select value={status} onChange={(e) => setStatus(e.target.value as OrderStatus)} style={{ width: '100%', padding: '8px', border: '1px solid #ccc' }}>
-            <option value="PENDING">Pending</option>
-            <option value="SHIPPED">Shipped</option>
-            <option value="DELIVERED">Delivered</option>
-            <option value="CANCELLED">Cancelled</option>
-          </select>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '1rem' }}>
-             <button type="button" onClick={onClose}>Cancel</button>
-            <button type="submit" disabled={mutation.isPending} style={{ background: '#333', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '4px' }}>
-              {mutation.isPending ? 'Updating...' : 'Update Status'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-// --- Main Orders Page Component ---
+import type { Order } from '@/types';
+import { getAdminOrders, deleteOrder } from '../../lib/api';
+import LoadingScreen from '../../components/LoadingScreen';
+import ConfirmationModal from '../../components/ConfirmationModal';
+import StatusUpdateModal from '../../components/StatusUpdateModal';
+import { useTranslation } from 'react-i18next';
+import { ChevronDown, ChevronRight, Edit, Trash2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const OrdersPage = () => {
+  const { t } = useTranslation();
   const [isFormOpen, setFormOpen] = useState(false);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [deletingOrderId, setDeletingOrderId] = useState<number | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
   const queryClient = useQueryClient();
@@ -74,103 +32,135 @@ const OrdersPage = () => {
   });
 
   const handleDelete = (id: number) => {
-    if (window.confirm('Are you sure you want to delete this order?')) {
-      deleteMutation.mutate(id);
+    setDeletingOrderId(id);
+    setIsConfirmModalOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (deletingOrderId) {
+      deleteMutation.mutate(deletingOrderId);
     }
+    setIsConfirmModalOpen(false);
+    setDeletingOrderId(null);
   };
 
   const toggleExpand = (orderId: number) => {
     setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
   };
 
-  if (isPending) return <div>Loading orders...</div>;
+  const handleOpenModal = (order: Order) => {
+    setSelectedOrder(order);
+    setFormOpen(true);
+  };
+
+  if (isPending) return <LoadingScreen fullScreen={false} />;
   if (error) return <div>Error: {error.message}</div>;
+
+  const getStatusChipClass = (status: string) => {
+    switch (status) {
+      case 'DELIVERED':
+        return 'bg-green-500/20 text-green-300';
+      case 'SHIPPED':
+        return 'bg-blue-500/20 text-blue-300';
+      case 'CANCELLED':
+        return 'bg-red-500/20 text-red-300';
+      case 'PENDING':
+      default:
+        return 'bg-yellow-500/20 text-yellow-300';
+    }
+  };
 
   return (
     <div>
-      <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '1rem' }}>Orders</h1>
+      <h1 className="text-3xl font-bold text-brand-primary mb-8">{t('ordersPage.title')}</h1>
+
       {isFormOpen && selectedOrder && (
         <StatusUpdateModal
+          isOpen={isFormOpen}
           order={selectedOrder}
-          onSuccess={() => setFormOpen(false)}
           onClose={() => setFormOpen(false)}
         />
       )}
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}></th>
-            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Order ID</th>
-            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Customer</th>
-            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Date</th>
-            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Status</th>
-            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Total</th>
-            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
+
+      <ConfirmationModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title={t('ordersPage.confirmDeleteTitle')}
+        message={t('ordersPage.confirmDeleteMessage')}
+      />
+
+      <div className="bg-black/20 border border-brand-border rounded-20 overflow-hidden">
+        <div className="hidden md:grid grid-cols-12 px-6 py-4 border-b border-brand-border font-bold text-sm text-brand-secondary">
+          <div className="col-span-1"></div>
+          <div className="col-span-2">{t('ordersPage.orderId')}</div>
+          <div className="col-span-3">{t('ordersPage.customer')}</div>
+          <div className="col-span-2">{t('ordersPage.date')}</div>
+          <div className="col-span-2">{t('ordersPage.status')}</div>
+          <div className="col-span-1 text-right">{t('ordersPage.total')}</div>
+          <div className="col-span-1 text-right">{t('ordersPage.actions')}</div>
+        </div>
+        <div>
           {orders?.map((order) => (
             <React.Fragment key={order.orderId}>
-              <tr >
-                <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                  <button onClick={() => toggleExpand(order.orderId)}>
-                    {expandedOrderId === order.orderId ? '-' : '+'}
+              <div className="grid grid-cols-12 px-6 py-4 items-center border-b border-brand-border last:border-b-0 hover:bg-black/10 transition-colors">
+                <div className="col-span-1">
+                  <button onClick={() => toggleExpand(order.orderId)} className="text-brand-secondary hover:text-brand-primary">
+                    {expandedOrderId === order.orderId ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
                   </button>
-                </td>
-                <td style={{ border: '1px solid #ddd', padding: '8px' }}>#{order.orderId}</td>
-                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{order.customer.name}</td>
-                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{format(new Date(order.createdAt), 'PPpp')}</td>
-                <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                  <span style={{ padding: '4px 8px', borderRadius: '4px', background: '#eee' }}>
+                </div>
+                <div className="col-span-2 text-brand-primary font-medium">#{order.orderId}</div>
+                <div className="col-span-3 text-brand-primary">{order.customer.name}</div>
+                <div className="col-span-2 text-brand-secondary text-sm">{format(new Date(order.createdAt), 'PPpp')}</div>
+                <div className="col-span-2">
+                  <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${getStatusChipClass(order.status)}`}>
                     {order.status}
                   </span>
-                </td>
-                <td style={{ border: '1px solid #ddd', padding: '8px' }}>${order.totalAmount.toFixed(2)}</td>
-                <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                   <button
-                      onClick={() => {
-                        setSelectedOrder(order);
-                        setFormOpen(true);
-                      }}
-                      style={{ marginRight: '8px' }}
-                    >
-                      Update Status
+                </div>
+                <div className="col-span-1 text-right text-brand-primary font-semibold">${order.totalAmount.toFixed(2)}</div>
+                <div className="col-span-1 text-right flex justify-end gap-3">
+                   <button onClick={() => handleOpenModal(order)} className="text-brand-secondary hover:text-brand-primary">
+                      <Edit size={18} />
                     </button>
-                    <button onClick={() => handleDelete(order.orderId)}>
-                      Delete
+                    <button onClick={() => handleDelete(order.orderId)} className="text-brand-secondary hover:text-red-500">
+                      <Trash2 size={18} />
                     </button>
-                </td>
-              </tr>
-              {expandedOrderId === order.orderId && (
-                <tr>
-                  <td colSpan={7} style={{ padding: '16px', background: '#f9f9f9' }}>
-                    <h4>Order Items:</h4>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '8px' }}>
-                       <thead>
-                          <tr>
-                            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Product</th>
-                            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Quantity</th>
-                            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Price at Purchase</th>
-                          </tr>
-                        </thead>
-                       <tbody>
+                </div>
+              </div>
+              <AnimatePresence>
+                {expandedOrderId === order.orderId && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="bg-black/20 overflow-hidden"
+                  >
+                    <div className="p-6">
+                      <h4 className="font-bold text-brand-primary mb-4">{t('ordersPage.items')}:</h4>
+                      <div className="border border-brand-border rounded-lg">
+                        <div className="grid grid-cols-3 px-4 py-2 bg-black/20 font-semibold text-sm text-brand-secondary">
+                          <div>{t('ordersPage.product')}</div>
+                          <div className="text-center">{t('ordersPage.quantity')}</div>
+                          <div className="text-right">{t('ordersPage.priceAtPurchase')}</div>
+                        </div>
                         {order.items.map((item) => (
-                          <tr key={item.orderItemId}>
-                            <td style={{ border: '1px solid #ddd', padding: '8px' }}>{item.product.name}</td>
-                            <td style={{ border: '1px solid #ddd', padding: '8px' }}>{item.quantity}</td>
-                            <td style={{ border: '1px solid #ddd', padding: '8px' }}>${item.priceAtPurchase.toFixed(2)}</td>
-                          </tr>
+                          <div key={item.orderItemId} className="grid grid-cols-3 px-4 py-3 border-t border-brand-border text-brand-primary">
+                            <div>{item.product.name}</div>
+                            <div className="text-center">{item.quantity}</div>
+                            <div className="text-right">${item.priceAtPurchase.toFixed(2)}</div>
+                          </div>
                         ))}
-                      </tbody>
-                    </table>
-                  </td>
-                </tr>
-              )}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </React.Fragment>
           ))}
-        </tbody>
-      </table>
-    </div>
+          </div>
+        </div>
+      </div>
   );
 };
 
