@@ -1,86 +1,175 @@
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Order, OrderStatus } from '@/types';
-import { getAdminOrders, updateOrderStatus } from '../../lib/api';
-import LoadingScreen from '../../components/LoadingScreen';
 import { format } from 'date-fns';
+import type { Order, OrderStatus } from '@/types';
+import { getAdminOrders, updateOrderStatus, deleteOrder } from '../../lib/api';
 
-const statusColors: Record<OrderStatus, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-800',
-  SHIPPED: 'bg-blue-100 text-blue-800',
-  DELIVERED: 'bg-green-100 text-green-800',
-  CANCELLED: 'bg-red-100 text-red-800',
-};
+// --- Status Update Form (as a modal) ---
 
-const StatusBadge = ({ status }: { status: OrderStatus }) => (
-  <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[status]}`}>
-    {status}
-  </span>
-);
+interface StatusUpdateFormProps {
+  order: Order;
+  onSuccess: () => void;
+  onClose: () => void;
+}
 
-const OrdersPage = () => {
+const StatusUpdateModal = ({ order, onSuccess, onClose }: StatusUpdateFormProps) => {
+  const [status, setStatus] = useState<OrderStatus>(order.status);
   const queryClient = useQueryClient();
-  const { data: orders, isPending, error } = useQuery<Order[], Error>({
-    queryKey: ['adminOrders'],
-    queryFn: getAdminOrders,
-  });
 
   const mutation = useMutation({
-    mutationFn: ({ orderId, status }: { orderId: number; status: OrderStatus }) =>
-      updateOrderStatus(orderId, status),
+    mutationFn: (variables: { orderId: number; status: OrderStatus }) =>
+      updateOrderStatus(variables.orderId, variables.status),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      onSuccess();
     },
   });
 
-  const handleStatusChange = (orderId: number, status: OrderStatus) => {
-    mutation.mutate({ orderId, status });
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    mutation.mutate({ orderId: order.orderId, status });
   };
 
-  if (isPending) return <LoadingScreen />;
-  if (error) return <div className="bg-red-100 border border-red-200 text-red-800 p-4 rounded-lg">Error: {error.message}</div>;
+  return (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <div style={{ background: 'white', padding: '2rem', borderRadius: '8px', minWidth: '400px' }}>
+        <h2>Update Order #{order.orderId}</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <select value={status} onChange={(e) => setStatus(e.target.value as OrderStatus)} style={{ width: '100%', padding: '8px', border: '1px solid #ccc' }}>
+            <option value="PENDING">Pending</option>
+            <option value="SHIPPED">Shipped</option>
+            <option value="DELIVERED">Delivered</option>
+            <option value="CANCELLED">Cancelled</option>
+          </select>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '1rem' }}>
+             <button type="button" onClick={onClose}>Cancel</button>
+            <button type="submit" disabled={mutation.isPending} style={{ background: '#333', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '4px' }}>
+              {mutation.isPending ? 'Updating...' : 'Update Status'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// --- Main Orders Page Component ---
+
+const OrdersPage = () => {
+  const [isFormOpen, setFormOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
+  const queryClient = useQueryClient();
+
+  const { data: orders, isPending, error } = useQuery<Order[], Error>({
+    queryKey: ['orders'],
+    queryFn: getAdminOrders,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteOrder,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    },
+  });
+
+  const handleDelete = (id: number) => {
+    if (window.confirm('Are you sure you want to delete this order?')) {
+      deleteMutation.mutate(id);
+    }
+  };
+
+  const toggleExpand = (orderId: number) => {
+    setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
+  };
+
+  if (isPending) return <div>Loading orders...</div>;
+  if (error) return <div>Error: {error.message}</div>;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-brand-text">Orders</h1>
-      <div className="bg-white rounded-xl border border-brand-border shadow-card overflow-x-auto">
-        <table className="w-full text-sm text-left text-brand-text">
-          <thead className="bg-gray-50 border-b border-brand-border">
-            <tr>
-              <th scope="col" className="p-4">Order ID</th>
-              <th scope="col" className="p-4">Customer</th>
-              <th scope="col" className="p-4">Total</th>
-              <th scope="col" className="p-4">Status</th>
-              <th scope="col" className="p-4">Date</th>
-              <th scope="col" className="p-4">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders?.map((order) => (
-              <tr key={order.orderId} className="border-b border-brand-border last:border-b-0">
-                <td className="p-4 font-medium">#{order.orderId}</td>
-                <td className="p-4">{order.customer?.name || 'N/A'}</td>
-                <td className="p-4">${order.totalAmount.toFixed(2)}</td>
-                <td className="p-4">
-                  <StatusBadge status={order.status as OrderStatus} />
+    <div>
+      <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '1rem' }}>Orders</h1>
+      {isFormOpen && selectedOrder && (
+        <StatusUpdateModal
+          order={selectedOrder}
+          onSuccess={() => setFormOpen(false)}
+          onClose={() => setFormOpen(false)}
+        />
+      )}
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>
+            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}></th>
+            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Order ID</th>
+            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Customer</th>
+            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Date</th>
+            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Status</th>
+            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Total</th>
+            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {orders?.map((order) => (
+            <React.Fragment key={order.orderId}>
+              <tr >
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                  <button onClick={() => toggleExpand(order.orderId)}>
+                    {expandedOrderId === order.orderId ? '-' : '+'}
+                  </button>
                 </td>
-                <td className="p-4">{format(new Date(order.createdAt), 'MMM d, yyyy')}</td>
-                <td className="p-4">
-                  <select
-                    value={order.status}
-                    onChange={(e) => handleStatusChange(order.orderId, e.target.value as OrderStatus)}
-                    className="bg-white border border-brand-border text-brand-text p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/50"
-                  >
-                    <option value="PENDING">Pending</option>
-                    <option value="SHIPPED">Shipped</option>
-                    <option value="DELIVERED">Delivered</option>
-                    <option value="CANCELLED">Cancelled</option>
-                  </select>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>#{order.orderId}</td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{order.customer.name}</td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{format(new Date(order.createdAt), 'PPpp')}</td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                  <span style={{ padding: '4px 8px', borderRadius: '4px', background: '#eee' }}>
+                    {order.status}
+                  </span>
+                </td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>${order.totalAmount.toFixed(2)}</td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                   <button
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setFormOpen(true);
+                      }}
+                      style={{ marginRight: '8px' }}
+                    >
+                      Update Status
+                    </button>
+                    <button onClick={() => handleDelete(order.orderId)}>
+                      Delete
+                    </button>
                 </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+              {expandedOrderId === order.orderId && (
+                <tr>
+                  <td colSpan={7} style={{ padding: '16px', background: '#f9f9f9' }}>
+                    <h4>Order Items:</h4>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '8px' }}>
+                       <thead>
+                          <tr>
+                            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Product</th>
+                            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Quantity</th>
+                            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Price at Purchase</th>
+                          </tr>
+                        </thead>
+                       <tbody>
+                        {order.items.map((item) => (
+                          <tr key={item.orderItemId}>
+                            <td style={{ border: '1px solid #ddd', padding: '8px' }}>{item.product.name}</td>
+                            <td style={{ border: '1px solid #ddd', padding: '8px' }}>{item.quantity}</td>
+                            <td style={{ border: '1px solid #ddd', padding: '8px' }}>${item.priceAtPurchase.toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </td>
+                </tr>
+              )}
+            </React.Fragment>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 };

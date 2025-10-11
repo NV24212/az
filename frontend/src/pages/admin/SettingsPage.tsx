@@ -1,33 +1,15 @@
-import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { StoreSettings } from '../../lib/api';
 import { getAdminSettings, updateAdminSettings } from '../../lib/api';
-import type { StoreSettings } from '@/types';
-import { Loader2 } from 'lucide-react';
-import LoadingScreen from '../../components/LoadingScreen';
+import { useEffect, useState } from 'react';
 
-const SettingsCard = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="bg-white rounded-xl border border-brand-border shadow-card">
-    <div className="p-6 border-b border-brand-border">
-      <h2 className="text-lg font-semibold text-brand-text">{title}</h2>
-    </div>
-    <div className="p-6">
-      {children}
-    </div>
-  </div>
-);
-
-const TextInput = ({ label, id, ...props }: { label: string; id: string; [key: string]: any }) => (
-  <div>
-    <label htmlFor={id} className="block text-sm font-medium text-brand-text-secondary mb-2">{label}</label>
-    <input id={id} {...props} className="w-full bg-white border border-brand-border text-brand-text p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/50" />
-  </div>
-);
-
-const SettingsPage = () => {
+export default function SettingsPage() {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState<Partial<StoreSettings>>({});
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
-  const { data: settings, isPending } = useQuery({
+  const { data: settings, isLoading } = useQuery({
     queryKey: ['adminSettings'],
     queryFn: getAdminSettings,
   });
@@ -42,7 +24,8 @@ const SettingsPage = () => {
     mutationFn: (updatedSettings: Partial<StoreSettings>) => updateAdminSettings(updatedSettings),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminSettings'] });
-      // In a real app, you'd use a toast notification here
+      setPassword('');
+      setConfirmPassword('');
       alert('Settings updated successfully!');
     },
     onError: (error) => {
@@ -52,44 +35,69 @@ const SettingsPage = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    mutation.mutate(formData);
+    if (password && password !== confirmPassword) {
+      alert("Passwords do not match.");
+      return;
+    }
+
+    const settingsToUpdate: Partial<StoreSettings & { password?: string }> = { ...formData };
+    if (password) {
+      settingsToUpdate.password = password;
+    }
+
+    mutation.mutate(settingsToUpdate);
   };
 
-  if (isPending) return <LoadingScreen />;
+  if (isLoading) return <p>Loading settings...</p>;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <h1 className="text-2xl font-bold text-brand-text">Settings</h1>
-
-      <SettingsCard title="General Settings">
-        <div className="space-y-4">
-          <TextInput label="Store Name" id="storeName" value={formData.storeName || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, storeName: e.target.value})} />
-          <TextInput label="Currency" id="currency" value={formData.currency || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, currency: e.target.value})} />
-           <div>
-            <label htmlFor="storeDescription" className="block text-sm font-medium text-brand-text-secondary mb-2">Store Description</label>
-            <textarea id="storeDescription" value={formData.storeDescription || ''} onChange={(e) => setFormData({...formData, storeDescription: e.target.value})} className="w-full bg-white border border-brand-border text-brand-text p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/50" rows={3}></textarea>
+    <div>
+      <h1 className="text-2xl font-bold mb-6">Store Settings</h1>
+      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md space-y-4 max-w-2xl">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium">Store Name</label>
+            <input type="text" value={formData.storeName || ''} onChange={e => setFormData({...formData, storeName: e.target.value})} className="w-full mt-1 p-2 border rounded-md"/>
+          </div>
+          <div>
+            <label className="block text-sm font-medium">Admin Email</label>
+            <input type="email" value={formData.adminEmail || ''} onChange={e => setFormData({...formData, adminEmail: e.target.value})} className="w-full mt-1 p-2 border rounded-md"/>
+          </div>
+          <div>
+            <label className="block text-sm font-medium">New Password</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full mt-1 p-2 border rounded-md" placeholder="Leave blank to keep current password"/>
+          </div>
+          <div>
+            <label className="block text-sm font-medium">Confirm New Password</label>
+            <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="w-full mt-1 p-2 border rounded-md"/>
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium">Store Description</label>
+            <textarea value={formData.storeDescription || ''} onChange={e => setFormData({...formData, storeDescription: e.target.value})} className="w-full mt-1 p-2 border rounded-md" rows={3}></textarea>
+          </div>
+          <div>
+            <label className="block text-sm font-medium">Currency</label>
+            <input type="text" value={formData.currency || ''} onChange={e => setFormData({...formData, currency: e.target.value})} className="w-full mt-1 p-2 border rounded-md"/>
+          </div>
+          <div>
+            <label className="block text-sm font-medium">Delivery Fee</label>
+            <input type="number" step="0.01" value={formData.deliveryFee || 0} onChange={e => setFormData({...formData, deliveryFee: Number(e.target.value)})} className="w-full mt-1 p-2 border rounded-md"/>
+          </div>
+          <div>
+            <label className="block text-sm font-medium">Free Delivery Minimum</label>
+            <input type="number" step="0.01" value={formData.freeDeliveryMinimum || 0} onChange={e => setFormData({...formData, freeDeliveryMinimum: Number(e.target.value)})} className="w-full mt-1 p-2 border rounded-md"/>
+          </div>
+           <div className="flex items-center">
+            <input type="checkbox" checked={formData.codEnabled || false} onChange={e => setFormData({...formData, codEnabled: e.target.checked})} className="h-4 w-4 rounded"/>
+            <label className="ml-2 block text-sm">Cash on Delivery Enabled</label>
           </div>
         </div>
-      </SettingsCard>
-
-      <SettingsCard title="Admin Account">
-         <div className="space-y-4">
-          <TextInput label="Admin Email" id="adminEmail" type="email" value={formData.adminEmail || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, adminEmail: e.target.value})} />
-          <TextInput label="New Password" id="newPassword" type="password" placeholder="Leave blank to keep current password" onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, password: e.target.value})} />
+        <div className="pt-4">
+          <button type="submit" className="bg-purple-600 text-white px-6 py-2 rounded-md hover:bg-purple-700" disabled={mutation.isPending}>
+            {mutation.isPending ? 'Saving...' : 'Save Settings'}
+          </button>
         </div>
-      </SettingsCard>
-
-      <div className="flex justify-end">
-        <button
-          type="submit"
-          disabled={mutation.isPending}
-          className="bg-brand-primary hover:bg-opacity-90 text-white font-bold py-2.5 px-5 rounded-lg transition-colors flex items-center justify-center w-36"
-        >
-          {mutation.isPending ? <Loader2 className="animate-spin" /> : 'Save Changes'}
-        </button>
-      </div>
-    </form>
+      </form>
+    </div>
   );
-};
-
-export default SettingsPage;
+}
