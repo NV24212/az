@@ -1,7 +1,18 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Users, Video, Star, LogOut, PanelLeft, Menu, Home, BarChart } from 'lucide-react';
+import {
+  Users,
+  LogOut,
+  PanelLeft,
+  Menu,
+  Home,
+  LayoutDashboard,
+  ShoppingBag,
+  ClipboardList,
+  LineChart,
+  Settings,
+} from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext.jsx';
 import MobileAdminSidebar from './MobileAdminSidebar.jsx';
 import { logoUrl } from '../../data/site.js';
@@ -33,16 +44,19 @@ const AdminLayout = () => {
   };
 
   const navLinks = [
-    { to: '/admin/users', text: t('admin.nav.users'), icon: Users, show: user?.can_manage_students || user?.can_manage_admins || user?.can_manage_classes },
-    { to: '/admin/weeks', text: t('admin.nav.weeks'), icon: Video, show: user?.can_manage_weeks },
-    { to: '/admin/points', text: t('admin.nav.points'), icon: Star, show: user?.can_manage_points },
-    { to: '/admin/analytics', text: t('admin.nav.analytics'), icon: BarChart, show: user?.can_view_analytics },
-  ].filter(link => link.show);
+    { to: '/admin', text: t('admin.nav.dashboard'), icon: LayoutDashboard },
+    { to: '/admin/products', text: t('admin.nav.products'), icon: ShoppingBag },
+    { to: '/admin/orders', text: t('admin.nav.orders'), icon: ClipboardList },
+    { to: '/admin/customers', text: t('admin.nav.customers'), icon: Users },
+    { to: '/admin/analytics', text: t('admin.nav.analytics'), icon: LineChart },
+  ];
 
-  const getNavLinkClasses = (isOpen) => (to) => {
-    const isActive = location.pathname === to;
+  const getNavLinkClasses = (isOpen) => (to, isExact = false) => {
+    const isActive = isExact ? location.pathname === to : location.pathname.startsWith(to);
     return `flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
-      isActive ? 'bg-brand-primary-light text-brand-primary' : 'text-brand-text-secondary hover:bg-gray-100 hover:text-brand-text'
+      isActive
+        ? 'bg-brand-primary-light text-brand-primary'
+        : 'text-brand-text-secondary hover:bg-brand-primary-light/60 hover:text-brand-primary'
     } ${!isOpen ? 'justify-center' : ''}`;
   };
 
@@ -53,26 +67,22 @@ const AdminLayout = () => {
 
     return (
       <div className="flex flex-col h-full">
-        <div className={`flex items-center justify-between p-4 mb-4 border-b border-brand-border`}>
-          <div className={`flex items-center gap-3 transition-all duration-300 ${!isOpen ? 'opacity-0 w-0 h-0' : 'opacity-100'}`}>
-            <img src={logoUrl} alt="Logo" className="h-8 w-8 rounded-full object-cover" />
-            <span className="text-lg font-bold whitespace-nowrap text-brand-primary">{user?.name}</span>
-          </div>
+        <div className="p-4 mb-4">
+          <h1 className="text-2xl font-bold text-brand-primary pt-2">AzharStore</h1>
         </div>
-
         <nav className="flex-grow px-2">
           <ul className="space-y-2">
-            <li>
-              <Link to="/" className={getHomeLinkClasses(isOpen)} title={isOpen ? '' : t('admin.nav.home')}>
-                <Home className={`h-5 w-5 ${isOpen ? 'mr-3' : ''}`} />
-                <span className={`transition-opacity duration-200 whitespace-nowrap ${!isOpen ? 'hidden' : 'delay-200'}`}>{t('admin.nav.home')}</span>
-              </Link>
-            </li>
             {navLinks.map((link) => (
               <li key={link.to}>
-                <NavLink to={link.to} className={getNavLinkClasses(isOpen)(link.to)} title={isOpen ? '' : link.text}>
+                <NavLink
+                  to={link.to}
+                  className={getNavLinkClasses(isOpen)(link.to, link.to === '/admin')}
+                  title={isOpen ? '' : link.text}
+                >
                   <link.icon className={`h-5 w-5 ${isOpen ? 'mr-3' : ''}`} />
-                  <span className={`transition-opacity duration-200 whitespace-nowrap ${!isOpen ? 'hidden' : 'delay-200'}`}>{link.text}</span>
+                  <span className={`transition-opacity duration-200 whitespace-nowrap ${!isOpen ? 'hidden' : 'delay-200'}`}>
+                    {link.text}
+                  </span>
                 </NavLink>
               </li>
             ))}
@@ -81,13 +91,27 @@ const AdminLayout = () => {
 
         <div className="px-2 py-4 mt-auto">
           <div className="border-t border-brand-border pt-4 space-y-2">
-            <button onClick={() => setIsDesktopSidebarOpen(!isOpen)} className={`flex items-center w-full px-4 py-2.5 text-sm font-medium text-brand-text-secondary hover:bg-gray-100 hover:text-brand-text rounded-lg transition-colors duration-200 ${!isOpen ? 'justify-center' : ''}`}>
-              <PanelLeft className={`h-5 w-5 ${isOpen ? 'mr-3' : ''}`} />
-              <span className={`transition-opacity duration-200 whitespace-nowrap ${!isOpen ? 'hidden' : 'delay-200'}`}>{t('student.nav.toggleSidebar')}</span>
-            </button>
-            <button onClick={handleLogout} className={`flex items-center w-full px-4 py-2.5 text-sm font-medium text-brand-text-secondary hover:bg-gray-100 hover:text-brand-text rounded-lg transition-colors duration-200 ${!isOpen ? 'justify-center' : ''}`}>
+            <Link
+              to="/admin/settings"
+              className={getNavLinkClasses(isOpen)('/admin/settings')}
+              title={isOpen ? '' : t('admin.nav.settings')}
+            >
+              <Settings className={`h-5 w-5 ${isOpen ? 'mr-3' : ''}`} />
+              <span className={`transition-opacity duration-200 whitespace-nowrap ${!isOpen ? 'hidden' : 'delay-200'}`}>
+                {t('admin.nav.settings')}
+              </span>
+            </Link>
+            <button
+              onClick={handleLogout}
+              className={`flex items-center w-full px-4 py-2.5 text-sm font-medium text-brand-text-secondary hover:bg-brand-primary-light/60 hover:text-brand-primary rounded-lg transition-colors duration-200 ${
+                !isOpen ? 'justify-center' : ''
+              }`}
+              title={isOpen ? '' : t('Logout')}
+            >
               <LogOut className={`h-5 w-5 ${isOpen ? 'mr-3' : ''}`} />
-              <span className={`transition-opacity duration-200 whitespace-nowrap ${!isOpen ? 'hidden' : 'delay-200'}`}>{t('Logout')}</span>
+              <span className={`transition-opacity duration-200 whitespace-nowrap ${!isOpen ? 'hidden' : 'delay-200'}`}>
+                {t('Logout')}
+              </span>
             </button>
           </div>
         </div>
@@ -111,13 +135,21 @@ const AdminLayout = () => {
       </aside>
 
       {/* Main Content */}
-      <div className="flex flex-col flex-1">
-        <header className="sticky top-0 bg-brand-sidebar/80 backdrop-blur-lg border-b border-brand-border p-4 flex items-center md:hidden">
-          <button onClick={() => setIsMobileSidebarOpen(true)} className="text-brand-text">
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <header className="sticky top-0 bg-brand-sidebar/80 backdrop-blur-lg p-4 flex items-center justify-between md:justify-end">
+          {/* Mobile Menu Button */}
+          <button onClick={() => setIsMobileSidebarOpen(true)} className="text-brand-text md:hidden">
             <Menu size={24} />
           </button>
+          {/* Desktop Toggle Button */}
+          <button
+            onClick={() => setIsDesktopSidebarOpen(!isDesktopSidebarOpen)}
+            className="hidden md:inline-flex items-center justify-center p-2 rounded-md text-brand-text-secondary hover:bg-gray-100"
+          >
+            <PanelLeft size={20} />
+          </button>
         </header>
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto bg-brand-background">
           <div className="p-4 md:p-8 animate-fade-in-up">
             <Outlet />
           </div>

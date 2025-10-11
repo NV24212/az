@@ -8,13 +8,15 @@ export default {
       },
       colors: {
         brand: {
-          background: "#F7F8FA", // Light grey background
-          sidebar: "#FFFFFF",
-          primary: "#5B2A86", // Main purple
-          "primary-light": "#F4F3FF", // Light purple for active states
-          text: "#101828", // Dark text
-          "text-secondary": "#667085", // Lighter text
-          border: "#EAECF0", // Light border color
+          background: '#F9FAFB',
+          sidebar: '#FFFFFF',
+          card: '#FFFFFF',
+          primary: '#7C3AED',
+          'primary-light': '#F5F3FF',
+          accent: '#22C55E',
+          text: '#111827',
+          'text-secondary': '#6B7280',
+          border: '#F3F4F6',
         },
       },
       borderRadius: {
