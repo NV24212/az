@@ -40,7 +40,8 @@ const WeekManagement = () => {
       const response = await api.get('/weeks/all');
       setWeeks(response.data.sort((a, b) => a.week_number - b.week_number));
       setError('');
-    } catch (err)      setError(t('weekManagement.errors.fetch'));
+    } catch (err) {
+      setError(t('weekManagement.errors.fetch'));
       console.error(err);
     } finally {
       if (isInitialLoad) setLoading(false);
