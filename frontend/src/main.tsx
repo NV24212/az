@@ -24,26 +24,29 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Storefront /> },
       { path: 'cart', element: <CartPage /> },
-      {
-        path: 'admin',
-        element: <ProtectedRoute />,
-        children: [
-          {
-            path: '',
-            element: <AdminLayout />,
-            children: [
-              { index: true, element: <AdminDashboard /> },
-              { path: 'products', element: <ProductsPage /> },
-              { path: 'categories', element: <CategoriesPage /> },
-              { path: 'orders', element: <OrdersPage /> },
-              { path: 'customers', element: <CustomersPage /> },
-              { path: 'settings', element: <SettingsPage /> },
-            ]
-          }
-        ]
-      },
-      { path: 'admin/login', element: <AdminLogin /> },
     ],
+  },
+  {
+    path: '/admin',
+    element: <ProtectedRoute />,
+    children: [
+      {
+        path: '',
+        element: <AdminLayout />,
+        children: [
+          { index: true, element: <AdminDashboard /> },
+          { path: 'products', element: <ProductsPage /> },
+          { path: 'categories', element: <CategoriesPage /> },
+          { path: 'orders', element: <OrdersPage /> },
+          { path: 'customers', element: <CustomersPage /> },
+          { path: 'settings', element: <SettingsPage /> },
+        ]
+      }
+    ]
+  },
+  {
+    path: '/admin/login',
+    element: <AdminLogin />,
   },
 ])
 
