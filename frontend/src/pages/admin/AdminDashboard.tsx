@@ -1,26 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
 import { getAdminOrders, getAdminProducts } from '../../lib/api';
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useTranslation } from 'react-i18next';
 
 function StatCard({
   title,
   value,
   percentageChange,
-  isPositive,
 }: {
   title: string;
   value: string | number;
   percentageChange: string;
-  isPositive: boolean;
 }) {
   return (
-    <div className="bg-brand-card p-6 rounded-20 shadow-card">
-      <h3 className="text-sm font-medium text-brand-text-secondary">{title}</h3>
-      <p className="text-3xl font-bold mt-2 text-brand-text">{value}</p>
-      <p className={`text-sm mt-2 ${isPositive ? 'text-brand-accent' : 'text-red-500'}`}>
-        {percentageChange}
-      </p>
+    <div className="bg-white p-6 rounded-lg shadow-sm">
+      <p className="text-sm font-medium text-gray-500">{title}</p>
+      <p className="text-3xl font-bold mt-2 text-right">{value}</p>
+      <p className="text-sm font-medium text-green-500 mt-1 text-right">{percentageChange}</p>
     </div>
   );
 }
@@ -42,90 +37,71 @@ export default function AdminDashboard() {
 
   // Mock data for "New Customers" and percentage changes as the API doesn't provide this
   const newCustomers = 300;
-  const revenueChange = "+10% from last month";
-  const ordersChange = "+5% from last month";
-  const customersChange = "+15% from last month";
-
-  // Prepare data for the charts
-  const salesData = orders?.map(order => ({
-    name: new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    sales: order.totalAmount,
-  })).slice(0, 15).reverse() || [];
-
-  const orderDistributionData = [
-    { name: 'Electronics', value: 400 },
-    { name: 'Clothing', value: 250 },
-    { name: 'Home Goods', value: 600 },
-    { name: 'Accessories', value: 350 },
-  ];
-
+  const revenueChange = "+10% عن الشهر الماضي";
+  const ordersChange = "+5% عن الشهر الماضي";
+  const customersChange = "+15% عن الشهر الماضي";
 
   if (loadingOrders || loadingProducts) return <p>Loading dashboard data...</p>;
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-3xl font-bold text-brand-text">{t('admin.dashboard.title')}</h1>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div>
+      <h2 className="text-3xl font-bold mb-8 font-display">لوحة التحكم</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <StatCard
-          title={t('admin.dashboard.totalRevenue')}
-          value={`$${totalRevenue.toLocaleString()}`}
+          title="إجمالي الإيرادات"
+          value={`${totalRevenue.toLocaleString()}$`}
           percentageChange={revenueChange}
-          isPositive={true}
         />
         <StatCard
-          title={t('admin.dashboard.orders')}
+          title="الطلبات"
           value={totalOrders.toLocaleString()}
           percentageChange={ordersChange}
-          isPositive={true}
         />
         <StatCard
-          title={t('admin.dashboard.newCustomers')}
+          title="عملاء جدد"
           value={newCustomers.toLocaleString()}
           percentageChange={customersChange}
-          isPositive={true}
         />
       </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-brand-card p-6 rounded-20 shadow-card">
-          <h2 className="text-lg font-semibold mb-4 text-brand-text">{t('admin.dashboard.salesTrends')}</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={salesData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mt-8">
+        <div className="lg:col-span-3 bg-white p-6 rounded-lg shadow-sm">
+          <h3 className="text-lg font-semibold">اتجاهات المبيعات</h3>
+          <div className="mt-4 h-80">
+            <svg fill="none" height="100%" preserveAspectRatio="none" viewBox="0 0 472 320" width="100%" xmlns="http://www.w3.org/2000/svg">
+              <path d="M0 240C18.1538 240 18.1538 100 36.3077 100C54.4615 100 54.4615 140 72.6154 140C90.7692 140 90.7692 220 108.923 220C127.077 220 127.077 120 145.231 120C163.385 120 163.385 230 181.538 230C199.692 230 199.692 160 217.846 160C236 160 236 140 254.154 140C272.308 140 272.308 260 290.462 260C308.615 260 308.615 300 326.769 300C344.923 300 344.923 40 363.077 40C381.231 40 381.231 200 399.385 200C417.538 200 417.538 280 435.692 280C453.846 280 453.846 100 472 100V320H0V240Z" fill="url(#paint0_linear_sales)"></path>
+              <path d="M0 240C18.1538 240 18.1538 100 36.3077 100C54.4615 100 54.4615 140 72.6154 140C90.7692 140 90.7692 220 108.923 220C127.077 220 127.077 120 145.231 120C163.385 120 163.385 230 181.538 230C199.692 230 199.692 160 217.846 160C236 160 236 140 254.154 140C272.308 140 272.308 260 290.462 260C308.615 260 308.615 300 326.769 300C344.923 300 344.923 40 363.077 40C381.231 40 381.231 200 399.385 200C417.538 200 417.538 280 435.692 280C453.846 280 453.846 100 472 100" stroke="var(--brand-primary)" stroke-linecap="round" stroke-width="3"></path>
               <defs>
-                <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+                <linearGradient gradientUnits="userSpaceOnUse" id="paint0_linear_sales" x1="236" x2="236" y1="40" y2="320">
+                  <stop stopColor="var(--brand-primary)" stopOpacity="0.2"></stop>
+                  <stop offset="1" stopColor="var(--brand-primary)" stopOpacity="0"></stop>
                 </linearGradient>
               </defs>
-              <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" />
-              <YAxis stroke="hsl(var(--muted-foreground))" />
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--background))',
-                  borderColor: 'hsl(var(--border))',
-                }}
-              />
-              <Area type="monotone" dataKey="sales" stroke="#7C3AED" fillOpacity={1} fill="url(#colorSales)" />
-            </AreaChart>
-          </ResponsiveContainer>
+            </svg>
+          </div>
         </div>
-        <div className="bg-brand-card p-6 rounded-20 shadow-card">
-          <h2 className="text-lg font-semibold mb-4 text-brand-text">{t('admin.dashboard.orderDistribution')}</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={orderDistributionData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" />
-              <YAxis stroke="hsl(var(--muted-foreground))" />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--background))',
-                  borderColor: 'hsl(var(--border))',
-                }}
-              />
-              <Bar dataKey="value" fill="#a78bfa" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-sm">
+          <h3 className="text-lg font-semibold">توزيع الطلبات</h3>
+          <div className="mt-4 h-80 flex flex-col justify-end gap-4">
+            <div className="flex items-end gap-4">
+              <div className="flex flex-col items-center gap-2 w-1/4">
+                <div className="w-full bg-purple-100 rounded-t-md" style={{ height: '100px' }}></div>
+                <p className="text-xs font-medium text-gray-500">إلكترونيات</p>
+              </div>
+              <div className="flex flex-col items-center gap-2 w-1/4">
+                <div className="w-full bg-purple-100 rounded-t-md" style={{ height: '60px' }}></div>
+                <p className="text-xs font-medium text-gray-500">ملابس</p>
+              </div>
+              <div className="flex flex-col items-center gap-2 w-1/4">
+                <div className="w-full bg-purple-100 rounded-t-md" style={{ height: '120px' }}></div>
+                <p className="text-xs font-medium text-gray-500">أدوات منزلية</p>
+              </div>
+              <div className="flex flex-col items-center gap-2 w-1/4">
+                <div className="w-full bg-purple-100 rounded-t-md" style={{ height: '80px' }}></div>
+                <p className="text-xs font-medium text-gray-500">إكسسوارات</p>
+              </div>
+            </div>
+            <div className="w-full h-px bg-gray-200"></div>
+          </div>
         </div>
       </div>
     </div>

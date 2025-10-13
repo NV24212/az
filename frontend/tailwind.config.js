@@ -4,20 +4,11 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        arabic: ["PNU", "system-ui", "sans-serif"],
+        sans: ['Tajawal', 'Noto Kufi Arabic', 'sans-serif'],
+        display: ['Funnel Display', 'sans-serif'],
       },
       colors: {
-        brand: {
-          background: '#F9FAFB',
-          sidebar: '#FFFFFF',
-          card: '#FFFFFF',
-          primary: '#7C3AED',
-          'primary-light': '#F5F3FF',
-          accent: '#22C55E',
-          text: '#111827',
-          'text-secondary': '#6B7280',
-          border: '#F3F4F6',
-        },
+        'brand-primary': '#742370',
       },
       borderRadius: {
         20: "20px",
