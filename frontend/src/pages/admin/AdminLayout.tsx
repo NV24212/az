@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 
 // SVG Icon Components
 const DashboardIcon = () => (
@@ -45,7 +45,6 @@ const LogoutIcon = () => (
 
 
 const AdminLayout = () => {
-  const location = useLocation();
   const navigate = useNavigate();
 
   const handleLogout = () => {

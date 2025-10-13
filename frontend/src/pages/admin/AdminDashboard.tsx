@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { getAdminOrders, getAdminProducts } from '../../lib/api';
-import { useTranslation } from 'react-i18next';
 
 function StatCard({
   title,
@@ -21,7 +20,6 @@ function StatCard({
 }
 
 export default function AdminDashboard() {
-  const { t } = useTranslation();
   const { data: orders, isLoading: loadingOrders } = useQuery({
     queryKey: ['adminOrders'],
     queryFn: getAdminOrders,
