@@ -5,14 +5,21 @@ export interface Customer {
   address: string;
 }
 
+export interface Variant {
+  variantId: number;
+  name: string;
+  stockQuantity: number;
+}
+
 export interface Product {
   productId: number;
   name: string;
   description: string | null;
   price: number;
-  stockQuantity: number;
+  stockQuantity: number; // This will now be the total stock
   imageUrl: string | null;
   categoryId: number;
+  variants: Variant[];
 }
 
 export interface OrderItem {

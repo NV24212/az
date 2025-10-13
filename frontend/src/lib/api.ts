@@ -7,6 +7,7 @@ import type {
   OrderStatus,
   Category,
   StoreSettings,
+  Variant,
 } from '@/types';
 
 // Re-export types for convenience in other files if needed
@@ -17,6 +18,7 @@ export type {
   OrderStatus,
   Category,
   StoreSettings,
+  Variant,
 };
 
 interface ApiError {

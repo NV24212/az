@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Beiruti', 'sans-serif'],
+        sans: ['Tajawal', 'sans-serif'],
       },
       colors: {
         'brand-primary': '#742370',
