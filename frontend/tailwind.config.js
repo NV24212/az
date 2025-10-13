@@ -4,8 +4,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Tajawal', 'Noto Kufi Arabic', 'sans-serif'],
-        display: ['Funnel Display', 'sans-serif'],
+        sans: ['Beiruti', 'sans-serif'],
       },
       colors: {
         'brand-primary': '#742370',
