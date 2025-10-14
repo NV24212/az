@@ -49,7 +49,7 @@ const CustomersPage = () => {
   };
 
   if (isPending) return <LoadingScreen fullScreen={false} />;
-  if (error) return <div>Error: {error.message}</div>;
+  if (error) return <div>{t('common.error', { message: error.message })}</div>;
 
   const containerVariants = {
     hidden: { opacity: 0 },
