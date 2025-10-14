@@ -26,7 +26,7 @@ const AdminLayout = () => {
 
 
   return (
-    <div dir="rtl" className="flex h-screen w-full bg-[#f4f0f4] text-gray-800 font-sans">
+    <div dir="rtl" className="flex h-screen w-full bg-[#f4f0f4] text-gray-800">
       <aside className={`flex-shrink-0 bg-white border-r border-gray-200 flex flex-col items-center py-6 transition-all duration-300 ${isSidebarOpen ? 'w-60' : 'w-20'}`}>
         <div className="h-16 flex items-center justify-center border-b border-gray-200 w-full px-4">
           <h1 className={`text-xl font-bold text-brand-primary font-display transition-opacity duration-200 ${!isSidebarOpen ? 'hidden' : ''}`}>متجر أزهر</h1>
