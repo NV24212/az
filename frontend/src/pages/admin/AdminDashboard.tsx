@@ -38,8 +38,8 @@ export default function AdminDashboard() {
 
   // Mock data for "New Customers" and percentage changes as the API doesn't provide this
   const newCustomers = 300;
-  const revenueChange = "+10% عن الشهر الماضي";
-  const ordersChange = "+5% عن الشهر الماضي";
+  const revenueChange = t('adminDashboard.revenueChange');
+  const ordersChange = t('adminDashboard.ordersChange');
   const customersChange = t('adminDashboard.customersChange');
 
   if (loadingOrders || loadingProducts) return <p>{t('adminDashboard.loading')}</p>;
