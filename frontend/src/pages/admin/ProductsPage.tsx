@@ -5,8 +5,10 @@ import { getAdminProducts, getAdminCategories, deleteProduct } from '../../lib/a
 import LoadingScreen from '../../components/LoadingScreen';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import ProductEditModal from './ProductEditModal';
+import { useTranslation } from 'react-i18next';
 
 export default function ProductsPage() {
+  const { t } = useTranslation();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const queryClient = useQueryClient();
@@ -39,14 +41,14 @@ export default function ProductsPage() {
   };
 
   const handleDelete = (productId: number) => {
-    if (window.confirm('هل أنت متأكد أنك تريد حذف هذا المنتج؟')) {
+    if (window.confirm(t('productsPage.confirmDelete'))) {
       deleteMutation.mutate(productId);
     }
   };
 
   const getCategoryName = (categoryId: number) => {
     const category = categories?.find(c => c.categoryId === categoryId);
-    return category ? category.name : 'غير مصنف';
+    return category ? category.name : t('productsPage.unclassified');
   };
 
   if (isLoading || isLoadingCategories) return <LoadingScreen fullScreen={false} />;
@@ -55,13 +57,13 @@ export default function ProductsPage() {
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
-        <h2 className="text-3xl font-bold font-display">المنتجات</h2>
+        <h2 className="text-3xl font-bold font-display">{t('productsPage.title')}</h2>
         <button
           onClick={() => handleOpenModal(null)}
           className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-brand-primary rounded-lg hover:bg-opacity-90 transition-colors"
         >
           <Plus size={18} />
-          <span>إضافة منتج</span>
+          <span>{t('productsPage.newProduct')}</span>
         </button>
       </div>
 
@@ -69,11 +71,11 @@ export default function ProductsPage() {
         <table className="w-full text-sm text-right text-gray-500">
           <thead className="text-xs text-gray-500 uppercase bg-gray-50">
             <tr>
-              <th scope="col" className="px-6 py-3">المنتج</th>
-              <th scope="col" className="px-6 py-3">الفئة</th>
-              <th scope="col" className="px-6 py-3">السعر</th>
-              <th scope="col" className="px-6 py-3">المخزون</th>
-              <th scope="col" className="px-6 py-3 text-center">الإجراءات</th>
+              <th scope="col" className="px-6 py-3">{t('productsPage.product')}</th>
+              <th scope="col" className="px-6 py-3">{t('productsPage.category')}</th>
+              <th scope="col" className="px-6 py-3">{t('productsPage.price')}</th>
+              <th scope="col" className="px-6 py-3">{t('productsPage.stock')}</th>
+              <th scope="col" className="px-6 py-3 text-center">{t('productsPage.actions')}</th>
             </tr>
           </thead>
           <tbody>

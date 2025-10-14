@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Almarai:wght@300;400;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -19,7 +19,7 @@ html, body, #root {
     --surface-dark: #e3dce5;
   }
   body {
-    font-family: 'Tajawal', sans-serif;
+    font-family: 'Almarai', sans-serif;
     background: linear-gradient(135deg, #f4f0f4 0%, #faf8fa 100%);
   }
   .material-symbols-outlined {

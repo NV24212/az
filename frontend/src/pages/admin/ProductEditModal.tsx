@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Product, Category, Variant } from '../../lib/api';
 import { createProduct, updateProduct } from '../../lib/api';
 import { X, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 type EditableProduct = Omit<Product, 'productId' | 'variants' | 'stockQuantity'> & {
   variants: Array<Partial<Variant> & { name: string }>;
@@ -16,6 +17,7 @@ interface ProductEditModalProps {
 }
 
 const ProductEditModal = ({ isOpen, onClose, product, categories }: ProductEditModalProps) => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState<Partial<EditableProduct>>({});
   const [newVariantName, setNewVariantName] = useState('');
@@ -90,7 +92,7 @@ const ProductEditModal = ({ isOpen, onClose, product, categories }: ProductEditM
     <div className="modal fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm is-open">
       <div className="modal-content bg-gray-50 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col border border-gray-200">
         <div className="flex justify-between items-center p-6 border-b border-gray-200">
-          <h3 className="text-xl font-bold text-gray-800">{product ? 'تعديل منتج' : 'إضافة منتج'}</h3>
+          <h3 className="text-xl font-bold text-gray-800">{product ? t('productForm.editTitle') : t('productForm.createTitle')}</h3>
           <button className="text-gray-500 hover:text-gray-800" onClick={onClose}>
             <X size={24} />
           </button>
@@ -100,40 +102,40 @@ const ProductEditModal = ({ isOpen, onClose, product, categories }: ProductEditM
 
             <div className="bg-white p-6 rounded-lg shadow-sm grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label htmlFor="name" className="block mb-2 text-sm font-medium text-gray-700">اسم المنتج</label>
+                <label htmlFor="name" className="block mb-2 text-sm font-medium text-gray-700">{t('productForm.name')}</label>
                 <input type="text" id="name" name="name" value={formData.name || ''} onChange={handleInputChange} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-primary focus:border-brand-primary block w-full p-2.5" required/>
               </div>
               <div className="grid grid-cols-2 gap-4">
                  <div>
-                    <label htmlFor="price" className="block mb-2 text-sm font-medium text-gray-700">السعر</label>
+                    <label htmlFor="price" className="block mb-2 text-sm font-medium text-gray-700">{t('productForm.price')}</label>
                     <input type="number" step="0.01" id="price" name="price" value={formData.price || ''} onChange={handleInputChange} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-primary focus:border-brand-primary block w-full p-2.5" required/>
                  </div>
                  <div>
-                    <label htmlFor="categoryId" className="block mb-2 text-sm font-medium text-gray-700">الفئة</label>
+                    <label htmlFor="categoryId" className="block mb-2 text-sm font-medium text-gray-700">{t('productForm.category')}</label>
                     <select id="categoryId" name="categoryId" value={formData.categoryId || ''} onChange={handleInputChange} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-primary focus:border-brand-primary block w-full p-2.5" required>
                        {categories.map(cat => <option key={cat.categoryId} value={cat.categoryId}>{cat.name}</option>)}
                     </select>
                  </div>
               </div>
               <div className="md:col-span-2">
-                <label htmlFor="description" className="block mb-2 text-sm font-medium text-gray-700">وصف المنتج</label>
+                <label htmlFor="description" className="block mb-2 text-sm font-medium text-gray-700">{t('productForm.description')}</label>
                 <textarea id="description" name="description" value={formData.description || ''} onChange={handleInputChange} rows={4} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-primary focus:border-brand-primary block w-full p-2.5"></textarea>
               </div>
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow-sm space-y-4">
-              <h4 className="font-semibold text-gray-800">المتغيرات (Variants)</h4>
+              <h4 className="font-semibold text-gray-800">{t('productForm.variants.title')}</h4>
                <div>
-                  <label className="block mb-2 text-sm font-medium text-gray-700">إضافة متغير جديد</label>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">{t('productForm.variants.addNew')}</label>
                   <div className="flex gap-2">
-                     <input type="text" value={newVariantName} onChange={(e) => setNewVariantName(e.target.value)} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-primary focus:border-brand-primary block w-full p-2.5" placeholder="اسم المتغير (مثال: أحمر، مقاس L)" />
-                     <button type="button" onClick={handleAddVariant} className="px-4 py-2 text-sm font-medium text-white bg-brand-primary rounded-lg hover:bg-opacity-90">إضافة</button>
+                     <input type="text" value={newVariantName} onChange={(e) => setNewVariantName(e.target.value)} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-primary focus:border-brand-primary block w-full p-2.5" placeholder={t('productForm.variants.placeholder')} />
+                     <button type="button" onClick={handleAddVariant} className="px-4 py-2 text-sm font-medium text-white bg-brand-primary rounded-lg hover:bg-opacity-90">{t('productForm.variants.add_button')}</button>
                   </div>
                </div>
 
               {formData.variants && formData.variants.length > 0 && (
                 <div className="mt-4 space-y-3 pt-4 border-t border-gray-200">
-                  <label className="text-sm font-bold text-gray-800">قيم المتغيرات والمخزون</label>
+                  <label className="text-sm font-bold text-gray-800">{t('productForm.variants.values_stock')}</label>
                   {formData.variants.map((variant, index) => (
                     <div key={index} className="grid grid-cols-1 sm:grid-cols-[1fr,1fr,auto] gap-4 items-center">
                       <input type="text" value={variant.name} onChange={(e) => handleVariantChange(index, 'name', e.target.value)} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2.5" required />
@@ -148,9 +150,9 @@ const ProductEditModal = ({ isOpen, onClose, product, categories }: ProductEditM
             </div>
           </div>
           <div className="flex justify-end items-center p-6 border-t border-gray-200 bg-gray-100 mt-auto">
-            <button type="button" className="px-6 py-2.5 text-sm font-medium text-gray-600 bg-transparent rounded-lg hover:bg-gray-200 transition-colors" onClick={onClose}>إلغاء</button>
+            <button type="button" className="px-6 py-2.5 text-sm font-medium text-gray-600 bg-transparent rounded-lg hover:bg-gray-200 transition-colors" onClick={onClose}>{t('common.cancel')}</button>
             <button type="submit" className="px-6 py-2.5 text-sm font-medium text-white bg-brand-primary rounded-lg hover:bg-opacity-90 ml-3" disabled={mutation.isPending}>
-              {mutation.isPending ? '...جاري الحفظ' : 'حفظ المنتج'}
+              {mutation.isPending ? t('productForm.saving') : t('productForm.save')}
             </button>
           </div>
         </form>

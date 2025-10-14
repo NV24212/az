@@ -114,7 +114,7 @@ const OrdersPage = () => {
                 <div className="col-span-2 text-brand-secondary text-sm">{format(new Date(order.createdAt), 'PPpp')}</div>
                 <div className="col-span-2">
                   <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${getStatusChipClass(order.status)}`}>
-                    {order.status}
+                    {t(`ordersPage.statuses.${order.status}`)}
                   </span>
                 </div>
                 <div className="col-span-1 text-right text-brand-primary font-semibold">${order.totalAmount.toFixed(2)}</div>

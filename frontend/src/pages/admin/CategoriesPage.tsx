@@ -54,7 +54,7 @@ export default function CategoriesPage() {
   };
 
   if (isLoading) return <LoadingScreen fullScreen={false} />;
-  if (isError) return <p className="text-red-500">Error fetching categories: {error.message}</p>;
+  if (isError) return <p className="text-red-500">{t('common.error', { message: error.message })}</p>;
 
   const containerVariants = {
     hidden: { opacity: 0 },
