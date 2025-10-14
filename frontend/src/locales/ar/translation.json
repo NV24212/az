@@ -22,6 +22,8 @@
   "adminDashboard.totalOrders": "الطلبات",
   "adminDashboard.newCustomers": "عملاء جدد",
   "adminDashboard.customersChange": "+15% عن الشهر الماضي",
+  "adminDashboard.revenueChange": "+10% عن الشهر الماضي",
+  "adminDashboard.ordersChange": "+5% عن الشهر الماضي",
   "adminDashboard.loading": "جاري تحميل بيانات لوحة التحكم...",
   "adminDashboard.salesTrends": "اتجاهات المبيعات",
   "adminDashboard.orderDistribution": "توزيع الطلبات",

@@ -22,6 +22,8 @@
   "adminDashboard.totalOrders": "Orders",
   "adminDashboard.newCustomers": "New Customers",
   "adminDashboard.customersChange": "+15% from last month",
+  "adminDashboard.revenueChange": "+10% from last month",
+  "adminDashboard.ordersChange": "+5% from last month",
   "adminDashboard.loading": "Loading dashboard data...",
   "adminDashboard.salesTrends": "Sales Trends",
   "adminDashboard.orderDistribution": "Order Distribution",
