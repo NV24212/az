@@ -15,6 +15,7 @@ export default {
       boxShadow: {
         card: "0px 1px 2px rgba(16, 24, 40, 0.06), 0px 1px 3px rgba(16, 24, 40, 0.1)", // Softer shadow for light theme
         insetSoft: "inset 0 0 0 1px rgba(0,0,0,0.06)",
+        bottom: '0 5px 6px -7px rgba(0, 0, 0, 0.6), 0 2px 4px -5px rgba(0, 0, 0, 0.06)',
       },
       keyframes: {
         modalIn: {
