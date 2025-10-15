@@ -1,4 +1,4 @@
-import { StrictMode } from 'react'
+import React, { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './i18n';
 import './index.css'
@@ -28,10 +28,16 @@ const router = createBrowserRouter([
       {
         path: '',
         element: <AdminLayout />,
-        children: adminRoutes.map(route => ({
-          path: route.path.substring(1),
-          element: <route.component />,
-        })),
+        children: [
+          {
+            index: true,
+            element: React.createElement(adminRoutes[0].component),
+          },
+          ...adminRoutes.map(route => ({
+            path: route.path.substring(1),
+            element: React.createElement(route.component),
+          })),
+        ],
       },
     ],
   },
