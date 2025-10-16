@@ -29,11 +29,7 @@ if 'pgbouncer' not in DATABASE_URL:
 
 engine = create_async_engine(
     DATABASE_URL,
-    poolclass=QueuePool,
-    pool_size=10,
-    max_overflow=20,
     pool_pre_ping=True,
-    pool_recycle=1800, # 30 minutes
     connect_args={"statement_cache_size": 0}
 )
 
