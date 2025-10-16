@@ -41,8 +41,8 @@ CoreUI is meant to be the UX game changer. Pure & transparent code is devoid of 
 
 * [CoreUI Free Bootstrap Admin Template](https://github.com/coreui/coreui-free-bootstrap-admin-template)
 * [CoreUI Free Angular Admin Template](https://github.com/coreui/coreui-free-angular-admin-template)
-* [CoreUI Free React.js Admin Template (Vite)](https://github.com/coreui/coreui-free-react-admin-template)
-* [CoreUI Free React.js Admin Template (Create React App)](https://github.com/coreui/coreui-free-react-admin-template-cra)
+* [AzharStore Frontend (Vite)](https://github.com/NV24212/az)
+* [AzharStore Frontend (Create React App)](https://github.com/NV24212/az)
 * [CoreUI Free Vue.js Admin Template](https://github.com/coreui/coreui-free-vue-admin-template)
 
 ## CoreUI PRO
@@ -65,8 +65,8 @@ CoreUI is meant to be the UX game changer. Pure & transparent code is devoid of 
 
 ## Quick Start
 
-- [Download the latest release](https://github.com/coreui/coreui-free-react-admin-template/archive/refs/heads/main.zip)
-- Clone the repo: `git clone https://github.com/coreui/coreui-free-react-admin-template.git`
+- [Download the latest release](https://github.com/NV24212/az/archive/refs/heads/main.zip)
+- Clone the repo: `git clone https://github.com/NV24212/az.git`
 
 ### Installation
 
@@ -117,7 +117,7 @@ $ yarn build
 Within the download you'll find the following directories and files, logically grouping common assets and providing both compiled and minified variations. You'll see something like this:
 
 ```
-coreui-free-react-admin-template
+frontend
 ├── public/          # static files
 │   ├── favicon.ico
 │   └── manifest.json
@@ -205,7 +205,7 @@ CoreUI React.js Admin Templates are built on top of CoreUI and CoreUI PRO UI com
 
 For transparency into our release cycle and in striving to maintain backward compatibility, CoreUI Free Admin Template is maintained under [the Semantic Versioning guidelines](http://semver.org/).
 
-See [the Releases section of our project](https://github.com/coreui/coreui-free-react-admin-template/releases) for changelogs for each release version.
+See [the Releases section of our project](https://github.com/NV24212/az/releases) for changelogs for each release version.
 
 ## Creators
 
@@ -233,10 +233,10 @@ Get updates on CoreUI's development and chat with the project maintainers and co
 
 ## Support CoreUI Development
 
-CoreUI is an MIT-licensed open source project and is completely free to use. However, the amount of effort needed to maintain and develop new features for the project is not sustainable without proper financial backing. You can support development by buying the [CoreUI PRO](https://coreui.io/pricing/?framework=react&src=github-coreui-free-react-admin-template) or by becoming a sponsor via [Open Collective](https://opencollective.com/coreui/).
+This project is MIT-licensed and open source, free to use.
 
 ## Copyright and License
 
 copyright 2025 creativeLabs Łukasz Holeczek.   
 
-Code released under [the MIT license](https://github.com/coreui/coreui-free-react-admin-template/blob/main/LICENSE).
+Code released under [the MIT license](https://github.com/NV24212/az/blob/main/LICENSE).
