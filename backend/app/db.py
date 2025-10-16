@@ -22,9 +22,6 @@ if not DATABASE_URL.startswith("postgresql+asyncpg://"):
 if "pooler.supabase.com" not in DATABASE_URL:
     raise ValueError("Please use the transaction-level Supabase URL for the connection pooler.")
 
-# Add pgbouncer=true to the connection string
-if 'pgbouncer' not in DATABASE_URL:
-    DATABASE_URL += "?pgbouncer=true"
 
 
 engine = create_async_engine(
