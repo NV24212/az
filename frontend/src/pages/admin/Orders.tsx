@@ -1,56 +1,64 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
-import { api } from '../../lib/api'
-import Modal from '../../components/ui/Modal'
-import ConfirmDialog from '../../components/ui/ConfirmDialog'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { api } from '../../lib/api';
+import Modal from '../../components/ui/Modal';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import { motion, AnimatePresence } from 'framer-motion';
+import Loading from '../../components/ui/Loading';
 
-const STATUSES = ['PENDING','SHIPPED','DELIVERED','CANCELLED'] as const
+const STATUSES = ['PENDING', 'SHIPPED', 'DELIVERED', 'CANCELLED'] as const;
 
-type Order = { orderId: number; customer?: { customerId: number; name: string }; status: typeof STATUSES[number]; totalAmount: number; createdAt: string; items?: { productId: number; quantity: number; priceAtPurchase: number; product?: { name: string } }[] }
+type Order = { orderId: number; customer?: { customerId: number; name: string }; status: typeof STATUSES[number]; totalAmount: number; createdAt: string; items?: { productId: number; quantity: number; priceAtPurchase: number; product?: { name: string } }[] };
 
-type Customer = { customerId: number; name: string }
+type Customer = { customerId: number; name: string };
 
-type Product = { productId: number; name: string; price: number; stockQuantity: number }
+type Product = { productId: number; name: string; price: number; stockQuantity: number };
 
 export default function Orders() {
-  const qc = useQueryClient()
-  const { data: orders = [] } = useQuery({ queryKey: ['admin-orders'], queryFn: async () => (await api.get('/api/admin/orders/?limit=1000')).data as Order[] })
-  const { data: customers = [] } = useQuery({ queryKey: ['admin-customers-lite'], queryFn: async () => (await api.get('/api/admin/customers/?limit=1000')).data as Customer[] })
-  const { data: products = [] } = useQuery({ queryKey: ['admin-products-lite'], queryFn: async () => (await api.get('/api/admin/products/?limit=1000')).data as Product[] })
+  const qc = useQueryClient();
+  const { data: orders = [], isLoading: isLoadingOrders } = useQuery({ queryKey: ['admin-orders'], queryFn: async () => (await api.get('/api/admin/orders/?limit=1000')).data as Order[] });
+  const { data: customers = [], isLoading: isLoadingCustomers } = useQuery({ queryKey: ['admin-customers-lite'], queryFn: async () => (await api.get('/api/admin/customers/?limit=1000')).data as Customer[] });
+  const { data: products = [], isLoading: isLoadingProducts } = useQuery({ queryKey: ['admin-products-lite'], queryFn: async () => (await api.get('/api/admin/products/?limit=1000')).data as Product[] });
 
-  const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: number; status: Order['status'] }) => (await api.put(`/api/admin/orders/${id}`, JSON.stringify(status), { headers: { 'Content-Type': 'application/json' } })).data,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-orders'] })
-  })
+  const { mutate: updateStatus, isPending: isUpdatingStatus } = useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: Order['status'] }) => (await api.put(`/api/admin/orders/${id}`, { status })).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-orders'] }),
+  });
 
-  const deleteOrder = useMutation({
+  const { mutate: deleteOrder, isPending: isDeleting } = useMutation({
     mutationFn: async (id: number) => (await api.delete(`/api/admin/orders/${id}`)).data,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-orders'] })
-  })
-
-  const createOrder = useMutation({
-    mutationFn: async (payload: { customerId: number; items: { productId: number; quantity: number }[]; status?: Order['status'] }) => {
-      const created = (await api.post('/api/orders', { customerId: payload.customerId, items: payload.items })).data as Order
-      if (payload.status && payload.status !== 'PENDING') {
-        await api.put(`/api/admin/orders/${created.orderId}`, JSON.stringify(payload.status), { headers: { 'Content-Type': 'application/json' } })
-      }
-      return created
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-orders'] });
+      setConfirmDelete(null);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-orders'] })
-  })
+  });
 
-  const [confirmDelete, setConfirmDelete] = useState<Order | null>(null)
-  const [openCreate, setOpenCreate] = useState(false)
+  const { mutate: createOrder, isPending: isCreating } = useMutation({
+    mutationFn: async (payload: { customerId: number; items: { productId: number; quantity: number }[]; status: Order['status'] }) => {
+      return (await api.post('/api/orders', payload)).data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-orders'] });
+      setOpenCreate(false);
+    },
+  });
+
+  const [confirmDelete, setConfirmDelete] = useState<Order | null>(null);
+  const [openCreate, setOpenCreate] = useState(false);
 
   return (
     <div className="card">
       <div className="card-padding">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Orders</h2>
-          <button onClick={() => setOpenCreate(true)} className="brand-bg text-white rounded-lg px-4 py-2 font-medium shadow hover:opacity-95 active:scale-[0.98] transition-all">New Order</button>
+          <button onClick={() => setOpenCreate(true)} className="brand-bg text-white rounded-lg px-4 py-2 font-medium shadow hover:opacity-95 active:scale-[0.98] transition-all">Add Order</button>
         </div>
-        <div className="overflow-x-auto">
+        {isLoadingOrders ? (
+          <div className="h-96 flex items-center justify-center">
+            <Loading />
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
               <tr className="text-left text-slate-600">
