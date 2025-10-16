@@ -10,6 +10,7 @@ import Analytics from './pages/admin/Analytics'
 import ProtectedRoute from './components/routing/ProtectedRoute'
 import StoreLayout from './components/layout/StoreLayout'
 import Store from './pages/Store'
+import Categories from './pages/admin/Categories'
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="products" element={<Products />} />
           <Route path="orders" element={<Orders />} />
           <Route path="customers" element={<Customers />} />
+          <Route path="categories" element={<Categories />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="settings" element={<Settings />} />
         </Route>

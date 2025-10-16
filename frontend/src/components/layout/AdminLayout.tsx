@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { Home, Package, ShoppingCart, Users, BarChart3, Settings as SettingsIcon, LogOut } from 'lucide-react'
+import { Home, Package, ShoppingCart, Users, BarChart3, Settings as SettingsIcon, LogOut, Tag } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { clearToken } from '../../lib/auth'
 
@@ -8,6 +8,7 @@ const navItems = [
   { to: '/admin/products', label: 'Products', icon: Package },
   { to: '/admin/orders', label: 'Orders', icon: ShoppingCart },
   { to: '/admin/customers', label: 'Customers', icon: Users },
+  { to: '/admin/categories', label: 'Categories', icon: Tag },
   { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
 ]
 
