@@ -9,6 +9,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload, joinedload
 
 from . import models, schemas
 from .config import settings
@@ -111,7 +112,7 @@ async def get_product(db: AsyncSession, product_id: int):
 async def get_products(db: AsyncSession, skip: int = 0, limit: int = 100):
     result = await db.execute(
         select(models.Product)
-        .options(joinedload(models.Product.category))
+        .options(selectinload(models.Product.category))
         .offset(skip)
         .limit(limit)
     )
