@@ -1,17 +1,17 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery } from '@tanstack/react-query';
 
 const fetchOrders = async () => {
   // Replace with your actual API endpoint
-  const res = await fetch("https://api.azhar.store/api/admin/orders");
+  const res = await fetch('https://api.azhar.store/api/admin/orders');
   if (!res.ok) {
-    throw new Error("Network response was not ok");
+    throw new Error('Network response was not ok');
   }
   return res.json();
 };
 
 const OrdersPage = () => {
   const { data, error, isLoading } = useQuery({
-    queryKey: ["orders"],
+    queryKey: ['orders'],
     queryFn: fetchOrders,
   });
 
@@ -38,9 +38,7 @@ const OrdersPage = () => {
               <td className="border px-4 py-2">{order.customerId}</td>
               <td className="border px-4 py-2">{order.status}</td>
               <td className="border px-4 py-2">{order.totalAmount}</td>
-              <td className="border px-4 py-2">
-                {new Date(order.createdAt).toLocaleDateString()}
-              </td>
+              <td className="border px-4 py-2">{new Date(order.createdAt).toLocaleDateString()}</td>
             </tr>
           ))}
         </tbody>
