@@ -109,7 +109,12 @@ async def get_product(db: AsyncSession, product_id: int):
     return result.scalar_one_or_none()
 
 async def get_products(db: AsyncSession, skip: int = 0, limit: int = 100):
-    result = await db.execute(select(models.Product).offset(skip).limit(limit))
+    result = await db.execute(
+        select(models.Product)
+        .options(joinedload(models.Product.category))
+        .offset(skip)
+        .limit(limit)
+    )
     return result.scalars().all()
 
 async def create_product(db: AsyncSession, product: schemas.ProductCreate):
@@ -250,12 +255,12 @@ async def get_orders(db: AsyncSession, skip: int = 0, limit: int = 100):
         select(models.Order)
         .options(
             joinedload(models.Order.customer),
-            joinedload(models.Order.items).joinedload(models.OrderItem.product)
+            joinedload(models.Order.items).joinedload(models.OrderItem.product).joinedload(models.Product.category)
         )
         .offset(skip)
         .limit(limit)
     )
-    return result.scalars().all()
+    return result.scalars().unique().all()
 
 async def update_order_status(db: AsyncSession, order_id: int, status: schemas.OrderStatus):
     db_order = await get_order(db, order_id)

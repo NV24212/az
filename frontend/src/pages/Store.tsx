@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { api } from '../lib/api';
 import ProductCard from '../components/ProductCard';
 import Loading from '../components/ui/Loading';
+import ProductCardSkeleton from '../components/ProductCardSkeleton';
 
 type Product = {
   productId: number;
@@ -57,8 +58,10 @@ export default function Store() {
         </div>
       </div>
       {isLoadingProducts ? (
-        <div className="h-96 flex items-center justify-center">
-          <Loading />
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <ProductCardSkeleton key={i} />
+          ))}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
