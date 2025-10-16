@@ -6,6 +6,7 @@ import Products from './pages/admin/Products'
 import Orders from './pages/admin/Orders'
 import Customers from './pages/admin/Customers'
 import Settings from './pages/admin/Settings'
+import Analytics from './pages/admin/Analytics'
 import ProtectedRoute from './components/routing/ProtectedRoute'
 
 export default function App() {
@@ -19,6 +20,7 @@ export default function App() {
           <Route path="products" element={<Products />} />
           <Route path="orders" element={<Orders />} />
           <Route path="customers" element={<Customers />} />
+          <Route path="analytics" element={<Analytics />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Route>

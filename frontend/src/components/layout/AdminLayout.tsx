@@ -8,7 +8,7 @@ const navItems = [
   { to: '/admin/products', label: 'Products', icon: Package },
   { to: '/admin/orders', label: 'Orders', icon: ShoppingCart },
   { to: '/admin/customers', label: 'Customers', icon: Users },
-  { to: '/admin/analytics', label: 'Analytics', icon: BarChart3, disabled: true },
+  { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
 ]
 
 export default function AdminLayout() {
