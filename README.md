@@ -1,6 +1,6 @@
 # AzharStore Monorepo
 
-- ackend: FastAPI (Dokploy-ready)
+- ackend: FastAPI (Dokploy-ready)vtr
 - rontend: React/Vite/TS (Cloudflare Workers capable)
 
 ## Backend
