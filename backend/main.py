@@ -46,18 +46,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="AzharStore API", version="0.1.0", lifespan=lifespan)
 
-@app.middleware("http")
-async def db_session_middleware(request: Request, call_next):
-    session = None
-    try:
-        session = AsyncSessionLocal()
-        request.state.db = session
-        response = await call_next(request)
-    finally:
-        if session:
-            await session.close()
-    return response
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -66,28 +54,29 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
-import structlog
-logger = structlog.get_logger(__name__)
-
 import uuid
+import sys
 
 @app.middleware("http")
-async def logging_middleware(request: Request, call_next):
+async def unified_middleware(request: Request, call_next):
     correlation_id = str(uuid.uuid4())
     structlog.contextvars.bind_contextvars(correlation_id=correlation_id)
 
     start_time = time.time()
 
+    session = None
     try:
+        session = AsyncSessionLocal()
+        request.state.db = session
+
         response = await call_next(request)
+
         process_time = time.time() - start_time
 
         if sys.stdout.isatty():
-            # Development logging
             logger.info("request", method=request.method, url=str(request.url))
             logger.info("response", status_code=response.status_code, process_time=f"{process_time:.4f}s")
         else:
-            # Production logging
             logger.info(f"\"{request.method} {request.url}\" {response.status_code}", process_time=f"{process_time:.4f}s")
 
         return response
@@ -95,6 +84,8 @@ async def logging_middleware(request: Request, call_next):
         logger.exception("unhandled_exception", exc_info=e)
         raise
     finally:
+        if session:
+            await session.close()
         structlog.contextvars.clear_contextvars()
 
 @app.get("/")
