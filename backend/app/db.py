@@ -1,7 +1,7 @@
 import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import QueuePool
+from sqlalchemy.pool import NullPool
 from dotenv import load_dotenv
 from .models import Base
 
@@ -26,7 +26,7 @@ if "pooler.supabase.com" not in DATABASE_URL:
 
 engine = create_async_engine(
     DATABASE_URL,
-    pool_pre_ping=True,
+    poolclass=NullPool,
     connect_args={"statement_cache_size": 0}
 )
 
