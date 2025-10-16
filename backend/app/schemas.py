@@ -78,6 +78,7 @@ class ProductUpdate(ProductBase):
 
 class Product(ProductBase):
     productId: int
+    category: Category
 
     class Config:
         from_attributes = True
