@@ -1,17 +1,17 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from "@tanstack/react-query";
 
 const fetchCategories = async () => {
   // Replace with your actual API endpoint
-  const res = await fetch('https://api.azhar.store/api/categories');
+  const res = await fetch("https://api.azhar.store/api/categories");
   if (!res.ok) {
-    throw new Error('Network response was not ok');
+    throw new Error("Network response was not ok");
   }
   return res.json();
 };
 
 const CategoriesPage = () => {
   const { data, error, isLoading } = useQuery({
-    queryKey: ['categories'],
+    queryKey: ["categories"],
     queryFn: fetchCategories,
   });
 
