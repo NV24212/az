@@ -93,43 +93,42 @@ export default function Orders() {
         )}
       </div>
 
-      <CreateOrderModal open={openCreate} onClose={() => setOpenCreate(false)} onCreate={(payload) => createOrder.mutate(payload)} customers={customers} products={products} />
+      <CreateOrderModal open={openCreate} onClose={() => setOpenCreate(false)} onCreate={(payload) => createOrder(payload)} customers={customers} products={products} isCreating={isCreating} />
 
-      <ConfirmDialog open={!!confirmDelete} title="Delete Order" onCancel={() => setConfirmDelete(null)} onConfirm={() => { if (confirmDelete) deleteOrder.mutate(confirmDelete.orderId); setConfirmDelete(null) }} message={<span>Are you sure you want to delete order <b>#{confirmDelete?.orderId}</b>?</span>} />
+      <ConfirmDialog open={!!confirmDelete} title="Delete Order" onCancel={() => setConfirmDelete(null)} onConfirm={() => { if (confirmDelete) deleteOrder(confirmDelete.orderId); }} message={<span>Are you sure you want to delete order <b>#{confirmDelete?.orderId}</b>?</span>} isPending={isDeleting} />
     </div>
   )
 }
 
-function CreateOrderModal({ open, onClose, onCreate, customers, products }: { open: boolean; onClose: () => void; onCreate: (p: { customerId: number; items: { productId: number; quantity: number }[]; status?: typeof STATUSES[number] }) => void; customers: Customer[]; products: Product[] }) {
-  const [customerId, setCustomerId] = useState<number | ''>('')
-  const [status, setStatus] = useState<typeof STATUSES[number]>('PENDING')
-  const [productId, setProductId] = useState<number | ''>('')
-  const [qty, setQty] = useState(1)
-  const [items, setItems] = useState<{ productId: number; quantity: number }[]>([])
+function CreateOrderModal({ open, onClose, onCreate, customers, products, isCreating }: { open: boolean; onClose: () => void; onCreate: (p: { customerId: number; items: { productId: number; quantity: number }[]; status: typeof STATUSES[number] }) => void; customers: Customer[]; products: Product[]; isCreating: boolean }) {
+  const [customerId, setCustomerId] = useState<number | ''>('');
+  const [status, setStatus] = useState<typeof STATUSES[number]>('PENDING');
+  const [productId, setProductId] = useState<number | ''>('');
+  const [qty, setQty] = useState(1);
+  const [items, setItems] = useState<{ productId: number; quantity: number }[]>([]);
 
-  const mapById = useMemo(() => Object.fromEntries(products.map(p => [p.productId, p])), [products])
-  const total = useMemo(() => items.reduce((sum, it) => sum + (mapById[it.productId]?.price || 0) * it.quantity, 0), [items, mapById])
+  const mapById = useMemo(() => Object.fromEntries(products.map(p => [p.productId, p])), [products]);
+  const total = useMemo(() => items.reduce((sum, it) => sum + (mapById[it.productId]?.price || 0) * it.quantity, 0), [items, mapById]);
 
   function addItem() {
-    if (!productId || qty <= 0) return
+    if (!productId || qty <= 0) return;
     setItems((prev) => {
-      const exists = prev.find((i) => i.productId === productId)
-      if (exists) return prev.map(i => i.productId === productId ? { ...i, quantity: i.quantity + qty } : i)
-      return [...prev, { productId: productId as number, quantity: qty }]
-    })
-    setProductId('')
-    setQty(1)
+      const exists = prev.find((i) => i.productId === productId);
+      if (exists) return prev.map(i => i.productId === productId ? { ...i, quantity: i.quantity + qty } : i);
+      return [...prev, { productId: productId as number, quantity: qty }];
+    });
+    setProductId('');
+    setQty(1);
   }
-  function removeItem(id: number) { setItems((prev) => prev.filter(i => i.productId !== id)) }
+  function removeItem(id: number) { setItems((prev) => prev.filter(i => i.productId !== id)); }
 
   function submit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!customerId || items.length === 0) return
-    onCreate({ customerId: customerId as number, items, status })
-    setItems([])
-    setCustomerId('')
-    setStatus('PENDING')
-    onClose()
+    e.preventDefault();
+    if (!customerId || items.length === 0) return;
+    onCreate({ customerId: customerId as number, items, status });
+    setItems([]);
+    setCustomerId('');
+    setStatus('PENDING');
   }
 
   return (
