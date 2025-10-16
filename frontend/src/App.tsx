@@ -8,13 +8,18 @@ import Customers from './pages/admin/Customers'
 import Settings from './pages/admin/Settings'
 import Analytics from './pages/admin/Analytics'
 import ProtectedRoute from './components/routing/ProtectedRoute'
+import StoreLayout from './components/layout/StoreLayout'
+import Store from './pages/Store'
 
 export default function App() {
   return (
     <Routes>
+      <Route element={<StoreLayout />}>
+        <Route path="/" element={<Store />} />
+      </Route>
       <Route path="/admin/login" element={<Login />} />
-      <Route element={<ProtectedRoute /> }>
-        <Route path="/admin" element={<AdminLayout /> }>
+      <Route element={<ProtectedRoute />}>
+        <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="products" element={<Products />} />
@@ -24,7 +29,7 @@ export default function App() {
           <Route path="settings" element={<Settings />} />
         </Route>
       </Route>
-      <Route path="*" element={<Navigate to="/admin" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }
