@@ -6,6 +6,9 @@ from app.config import settings
 from app.db import AsyncSessionLocal, engine
 from app.models import Base
 from app.services import initialize_database
+from app.logging_config import setup_logging
+
+setup_logging()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -43,6 +46,26 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
+
+import structlog
+logger = structlog.get_logger(__name__)
+
+import uuid
+
+@app.middleware("http")
+async def logging_middleware(request: Request, call_next):
+    correlation_id = str(uuid.uuid4())
+    structlog.contextvars.bind_contextvars(correlation_id=correlation_id)
+    logger.info("request", method=request.method, url=str(request.url))
+    try:
+        response = await call_next(request)
+        logger.info("response", status_code=response.status_code)
+        return response
+    except Exception as e:
+        logger.exception("unhandled_exception", exc_info=e)
+        raise
+    finally:
+        structlog.contextvars.clear_contextvars()
 
 @app.get("/")
 async def root():
