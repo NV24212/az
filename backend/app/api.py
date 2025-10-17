@@ -3,6 +3,7 @@ from typing import List
 from . import services, schemas
 from .config import settings
 from .pocketbase_client import pb_client
+import httpx
 
 # Main router for the API
 router = APIRouter(prefix="/api")
@@ -22,8 +23,7 @@ async def login_for_access_token(form_data: schemas.AdminLoginRequest):
     """
     try:
         # Authenticate with PocketBase to verify credentials.
-        # The new pb_client handles token management automatically.
-        await pb_client.client.admins.auth_with_password(
+        await pb_client.client.admins.auth.with_password(
             form_data.email, form_data.password
         )
         # If successful, create a JWT token for our own API
@@ -31,7 +31,7 @@ async def login_for_access_token(form_data: schemas.AdminLoginRequest):
             data={"sub": form_data.email}
         )
         return {"access_token": access_token, "token_type": "bearer"}
-    except Exception:
+    except httpx.HTTPStatusError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
