@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.api import router as api_router, admin_router
 from app.config import settings
+from app.database import run_migrations
 from app.logging_config import setup_logging
 
 setup_logging()
@@ -12,7 +13,16 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-app = FastAPI(title="AzharStore API", version="0.1.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Application startup...")
+    logger.info("Running database migrations...")
+    await run_migrations()
+    logger.info("Database migrations complete.")
+    yield
+    logger.info("Application shutdown.")
+
+app = FastAPI(title="AzharStore API", version="0.1.0", lifespan=lifespan)
 
 # Determine the allowed origins for CORS based on the settings.
 # If CORS_ORIGINS is a wildcard "*", then allow all origins.
