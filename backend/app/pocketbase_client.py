@@ -22,7 +22,7 @@ class PocketBaseClient:
         try:
             resp = await self.client.post(
                 f"{self.base_url}/admins/auth-with-password",
-                json={"email": self.admin_email, "password": self.admin_password}
+                json={"identity": self.admin_email, "password": self.admin_password}
             )
             resp.raise_for_status()  # Raise an exception for bad status codes
             self.admin_token = resp.json()["token"]
