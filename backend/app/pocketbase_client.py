@@ -1,5 +1,4 @@
-from pocketbase import PocketBase
-from pocketbase.utils import ClientResponseError
+from pocketbase import PocketBase, ClientResponseError
 from .config import settings
 import structlog
 import asyncio
@@ -38,56 +37,17 @@ class PocketBaseClient:
                     logger.error("An unexpected error occurred during PocketBase admin authentication.", error=str(e))
                     raise
 
-    async def get_records(
-        self,
-        collection: str,
-        page: int = 1,
-        per_page: int = 30,
-        params: dict = None,
-    ):
-        """Fetches a paginated list of records from a collection."""
+    async def get_records(self, collection: str, params: dict = None):
+        """Fetches records from a collection."""
         await self._ensure_admin_auth()
-        if params is None:
-            params = {}
         try:
-            return await self.client.collection(collection).get_list(
-                page, per_page, params
-            )
+            return await self.client.collection(collection).get_list(1, 50, params)
         except ClientResponseError as e:
             logger.error(
                 "Failed to fetch records from PocketBase.",
                 collection=collection,
                 status_code=e.status,
-                response=e.response,
-            )
-            return None
-
-    async def get_full_list(self, collection: str, params: dict = None):
-        """Fetches all records from a collection without pagination."""
-        await self._ensure_admin_auth()
-        try:
-            return await self.client.collection(collection).get_full_list(params)
-        except ClientResponseError as e:
-            logger.error(
-                "Failed to fetch full list from PocketBase.",
-                collection=collection,
-                status_code=e.status,
-                response=e.response,
-            )
-            return None
-
-    async def get_record(self, collection: str, record_id: str, params: dict = None):
-        """Fetches a single record by its ID."""
-        await self._ensure_admin_auth()
-        try:
-            return await self.client.collection(collection).get_one(record_id, params)
-        except ClientResponseError as e:
-            logger.error(
-                "Failed to fetch a single record from PocketBase.",
-                collection=collection,
-                record_id=record_id,
-                status_code=e.status,
-                response=e.response,
+                response=e.response
             )
             return None
 
