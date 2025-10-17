@@ -21,18 +21,18 @@ async def get_db():
 
 import os
 
+from sqlalchemy import text
+
 async def run_migrations():
     """
     Connects to the database and executes the SQL commands from migrations.sql.
     """
     migrations_file_path = "migrations.sql"
 
-    # We need to get the underlying asyncpg connection to execute a multi-command
-    # SQL script, as SQLAlchemy's `exec_driver_sql` attempts to use prepared
-    # statements which do not support this.
     async with engine.connect() as conn:
-        await conn.run_sync(
-            lambda sync_conn: sync_conn.connection.driver_connection.execute(
-                open(migrations_file_path).read()
-            )
-        )
+        with open(migrations_file_path, 'r') as f:
+            sql_commands = f.read().split(';')
+            for command in sql_commands:
+                if command.strip():
+                    await conn.execute(text(command))
+        await conn.commit()
