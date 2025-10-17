@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 logger = structlog.get_logger(__name__)
 
 from . import services, schemas
-from .db import get_db
 
 # Main router for the API
 router = APIRouter(prefix="/api")
