@@ -68,7 +68,7 @@ class ProductBase(BaseModel):
     price: float
     stockQuantity: int
     imageUrl: str | None = None
-    categoryId: int
+    categoryId: int | None = None
 
 class ProductCreate(ProductBase):
     pass
@@ -78,7 +78,7 @@ class ProductUpdate(ProductBase):
 
 class Product(ProductBase):
     productId: int
-    category: Category
+    category: Category | None = None
 
     class Config:
         from_attributes = True
