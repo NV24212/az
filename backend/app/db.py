@@ -1,6 +1,7 @@
 import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import NullPool
 from dotenv import load_dotenv
 from .models import Base
 
@@ -18,9 +19,13 @@ if not DATABASE_URL.startswith("postgresql+asyncpg://"):
     else:
         raise ValueError("DATABASE_URL must be a valid PostgreSQL connection string")
 
+# The Supabase Transaction Pooler is required for IPv4-only environments
+# and does not support prepared statements. These settings are required
+# to ensure compatibility.
 engine = create_async_engine(
     DATABASE_URL,
-    pool_pre_ping=True
+    poolclass=NullPool,
+    connect_args={"statement_cache_size": 0}
 )
 
 AsyncSessionLocal = sessionmaker(
