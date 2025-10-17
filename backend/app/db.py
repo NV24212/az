@@ -1,7 +1,7 @@
 import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import NullPool
+from sqlalchemy.pool import QueuePool
 from dotenv import load_dotenv
 from .models import Base
 
@@ -22,13 +22,17 @@ if not DATABASE_URL.startswith("postgresql+asyncpg://"):
 if "pooler.supabase.com" not in DATABASE_URL:
     raise ValueError("Please use the transaction-level Supabase URL for the connection pooler.")
 
-# Append statement_cache_size=0 to the DATABASE_URL to prevent crashes with pgbouncer
-if "?" in DATABASE_URL:
-    DATABASE_URL += "&statement_cache_size=0"
-else:
-    DATABASE_URL += "?statement_cache_size=0"
 
-engine = create_async_engine(DATABASE_URL)
+
+# The `connect_args={"statement_cache_size": 0}` is required to disable
+# prepared statement caching, which is not supported by pgbouncer.
+# For this to work, the DATABASE_URL must be the "Transaction Pooler"
+# connection string from the Supabase dashboard.
+engine = create_async_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,
+    connect_args={"statement_cache_size": 0}
+)
 
 AsyncSessionLocal = sessionmaker(
     autocommit=False, autoflush=False, bind=engine, class_=AsyncSession
