@@ -25,9 +25,9 @@ async def run_migrations():
     """
     Connects to the database and executes the SQL commands from migrations.sql.
     """
-    # Construct the path to the migrations file relative to this script's location
-    # This is more robust than assuming the script is run from the project root.
-    migrations_file_path = os.path.join(os.path.dirname(__file__), '..', '..', 'migrations.sql')
+    # The Dockerfile sets the working directory to /app, which is the `backend`
+    # directory from the repo. The migrations file is in that directory.
+    migrations_file_path = "migrations.sql"
 
     async with engine.begin() as conn:
         with open(migrations_file_path, 'r') as f:
