@@ -1,7 +1,8 @@
-from pocketbase import PocketBase, ClientResponseError
+from pocketbase import PocketBase
 from .config import settings
 import structlog
 import asyncio
+import httpx
 
 logger = structlog.get_logger(__name__)
 
@@ -26,11 +27,11 @@ class PocketBaseClient:
                         self.admin_email, self.admin_password
                     )
                     logger.info("Successfully authenticated with PocketBase as admin.")
-                except ClientResponseError as e:
+                except httpx.HTTPStatusError as e:
                     logger.error(
                         "Failed to authenticate with PocketBase as admin.",
-                        status_code=e.status,
-                        response=e.response
+                        status_code=e.response.status_code,
+                        response=e.response.text
                     )
                     raise
                 except Exception as e:
@@ -42,12 +43,12 @@ class PocketBaseClient:
         await self._ensure_admin_auth()
         try:
             return await self.client.collection(collection).get_list(1, 50, params)
-        except ClientResponseError as e:
+        except httpx.HTTPStatusError as e:
             logger.error(
                 "Failed to fetch records from PocketBase.",
                 collection=collection,
-                status_code=e.status,
-                response=e.response
+                status_code=e.response.status_code,
+                response=e.response.text
             )
             return None
 
@@ -56,12 +57,12 @@ class PocketBaseClient:
         await self._ensure_admin_auth()
         try:
             return await self.client.collection(collection).create(data)
-        except ClientResponseError as e:
+        except httpx.HTTPStatusError as e:
             logger.error(
                 "Failed to create record in PocketBase.",
                 collection=collection,
-                status_code=e.status,
-                response=e.response
+                status_code=e.response.status_code,
+                response=e.response.text
             )
             return None
 
@@ -70,13 +71,13 @@ class PocketBaseClient:
         await self._ensure_admin_auth()
         try:
             return await self.client.collection(collection).update(record_id, data)
-        except ClientResponseError as e:
+        except httpx.HTTPStatusError as e:
             logger.error(
                 "Failed to update record in PocketBase.",
                 collection=collection,
                 record_id=record_id,
-                status_code=e.status,
-                response=e.response
+                status_code=e.response.status_code,
+                response=e.response.text
             )
             return None
 
@@ -86,13 +87,13 @@ class PocketBaseClient:
         try:
             await self.client.collection(collection).delete(record_id)
             return True
-        except ClientResponseError as e:
+        except httpx.HTTPStatusError as e:
             logger.error(
                 "Failed to delete record from PocketBase.",
                 collection=collection,
                 record_id=record_id,
-                status_code=e.status,
-                response=e.response
+                status_code=e.response.status_code,
+                response=e.response.text
             )
             return False
 
