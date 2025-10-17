@@ -21,11 +21,14 @@ async def login_for_access_token(form_data: schemas.AdminLoginRequest):
     FastAPI-specific JWT access token.
     """
     try:
-        # Authenticate with PocketBase to verify credentials
-        await pb_client.get_admin_token()
+        # Authenticate with PocketBase to verify credentials.
+        # The new pb_client handles token management automatically.
+        await pb_client.client.admins.auth_with_password(
+            form_data.email, form_data.password
+        )
         # If successful, create a JWT token for our own API
         access_token = services.create_access_token(
-            data={"sub": settings.POCKETBASE_ADMIN_EMAIL}
+            data={"sub": form_data.email}
         )
         return {"access_token": access_token, "token_type": "bearer"}
     except Exception:
@@ -38,24 +41,24 @@ async def login_for_access_token(form_data: schemas.AdminLoginRequest):
 # --- Public Endpoints ---
 @router.get("/status")
 async def status_check():
-    """Checks the API status."""
-    return {"api": "ok"}
+    """Checks the API status and the connection to PocketBase."""
+    pocketbase_healthy = await pb_client.health_check()
+    return {
+        "api": "ok",
+        "pocketbase": "healthy" if pocketbase_healthy else "unhealthy"
+    }
 
 @router.get("/products", response_model=List[schemas.Product])
 async def list_products():
     """Retrieves a list of all products from PocketBase."""
-    data = await services.get_products()
-    if data and "items" in data:
-        return data["items"]
-    return []
+    result = await services.get_products()
+    return result.items if result else []
 
 @router.get("/categories", response_model=List[schemas.Category])
 async def list_categories():
     """Retrieves a list of all product categories from PocketBase."""
-    data = await services.get_categories()
-    if data and "items" in data:
-        return data["items"]
-    return []
+    result = await services.get_categories()
+    return result.items if result else []
 
 # --- Admin Endpoints ---
 @admin_router.get("/status")
