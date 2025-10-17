@@ -15,10 +15,13 @@ from sqlalchemy.engine.url import make_url
 db_url = make_url(settings.DATABASE_URL)
 db_url = db_url.set(drivername="postgresql+asyncpg")
 
+# Append the query parameter to disable prepared statements.
+# This is a more direct way to ensure asyncpg disables the cache.
+db_url_str = str(db_url) + "?statement_cache_size=0"
+
 engine = create_async_engine(
-    db_url,
-    poolclass=NullPool,
-    connect_args={"statement_cache_size": 0}
+    db_url_str,
+    poolclass=NullPool
 )
 SessionLocal = async_sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()

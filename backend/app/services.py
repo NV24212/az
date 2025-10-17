@@ -7,6 +7,17 @@ from datetime import datetime, timedelta, timezone
 from .config import settings
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """
+    Verifies a plain-text password against a hashed password.
+
+    Args:
+        plain_password: The password to verify.
+        hashed_password: The hashed password from the database.
+
+    Returns:
+        True if the passwords match, False otherwise.
+    """
+    # bcrypt.checkpw requires the hashed password to be in bytes.
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
