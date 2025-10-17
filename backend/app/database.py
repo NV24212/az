@@ -25,10 +25,14 @@ async def run_migrations():
     """
     Connects to the database and executes the SQL commands from migrations.sql.
     """
-    # The Dockerfile sets the working directory to /app, which is the `backend`
-    # directory from the repo. The migrations file is in that directory.
     migrations_file_path = "migrations.sql"
 
-    async with engine.begin() as conn:
-        with open(migrations_file_path, 'r') as f:
-            await conn.exec_driver_sql(f.read())
+    # We need to get the underlying asyncpg connection to execute a multi-command
+    # SQL script, as SQLAlchemy's `exec_driver_sql` attempts to use prepared
+    # statements which do not support this.
+    async with engine.connect() as conn:
+        await conn.run_sync(
+            lambda sync_conn: sync_conn.connection.driver_connection.execute(
+                open(migrations_file_path).read()
+            )
+        )
