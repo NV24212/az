@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from sqlalchemy import text
 from app.api import router as api_router, admin_router
 from app.config import settings
 from app.db import AsyncSessionLocal, engine
@@ -24,7 +25,8 @@ async def lifespan(app: FastAPI):
     for i in range(3):
         try:
             async with engine.connect() as conn:
-                await conn.run_sync(Base.metadata.create_all)
+                # Use a simple query to check the connection instead of create_all
+                await conn.execute(text("SELECT 1"))
             print("--- Database connection successful ---")
             break
         except Exception as e:
