@@ -37,7 +37,7 @@ async def get_current_admin_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
 
 async def get_products():
-    return await pb_client.get_full_list("products")
+    return await pb_client.get_full_list("products", expand="categoryId")
 
 async def create_product(product_data: dict):
     return await pb_client.create_record("products", product_data)
@@ -49,7 +49,7 @@ async def delete_product(product_id: str):
     return await pb_client.delete_record("products", product_id)
 
 async def get_categories():
-    return await pb_client.get_full_list("categories")
+    return await pb_client.get_full_list("categories", sort="name")
 
 async def create_category(category_data: dict):
     return await pb_client.create_record("categories", category_data)

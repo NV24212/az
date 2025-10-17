@@ -23,7 +23,7 @@ async def login_for_access_token(form_data: schemas.AdminLoginRequest):
     """
     try:
         # Authenticate with PocketBase to verify credentials.
-        await pb_client.client.admins.auth.with_password(
+        await pb_client.client.collection("_superusers").auth.with_password(
             form_data.email, form_data.password
         )
         # If successful, create a JWT token for our own API
@@ -51,14 +51,12 @@ async def status_check():
 @router.get("/products", response_model=List[schemas.Product])
 async def list_products():
     """Retrieves a list of all products from PocketBase."""
-    result = await services.get_products()
-    return result.items if result else []
+    return await services.get_products()
 
 @router.get("/categories", response_model=List[schemas.Category])
 async def list_categories():
     """Retrieves a list of all product categories from PocketBase."""
-    result = await services.get_categories()
-    return result.items if result else []
+    return await services.get_categories()
 
 # --- Admin Endpoints ---
 @admin_router.get("/status")
