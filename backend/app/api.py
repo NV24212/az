@@ -1,12 +1,9 @@
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
-from sqlalchemy.ext.asyncio import AsyncSession
-
 logger = structlog.get_logger(__name__)
 
 from . import services, schemas
-from .db import get_db
 
 # Main router for the API
 router = APIRouter(prefix="/api")
@@ -42,12 +39,12 @@ async def status_check():
     return {"api": "ok"}
 
 @router.get("/products", response_model=List[schemas.Product])
-async def list_products(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
-    return await services.get_products(db, skip=skip, limit=limit)
+async def list_products(skip: int = 0, limit: int = 100):
+    return await services.get_products(skip=skip, limit=limit)
 
 @router.get("/categories", response_model=List[schemas.Category])
-async def list_categories(db: AsyncSession = Depends(get_db)):
-    return await services.get_categories(db=db)
+async def list_categories(skip: int = 0, limit: int = 100):
+    return await services.get_categories(skip=skip, limit=limit)
 
 @router.post("/customers", response_model=schemas.Customer)
 async def create_customer_endpoint(customer: schemas.CustomerCreate, db: AsyncSession = Depends(get_db)):

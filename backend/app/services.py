@@ -7,13 +7,9 @@ from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload, joinedload
-
 from . import models, schemas
 from .config import settings
-from .db import get_db
+from .supabase import supabase
 
 # Load environment variables from .env file
 load_dotenv()
@@ -69,54 +65,15 @@ async def get_current_admin_user(token: str = Depends(oauth2_scheme), db: AsyncS
 
 # --- Category Service Functions ---
 
-async def get_category(db: AsyncSession, category_id: int):
-    result = await db.execute(select(models.Category).filter(models.Category.categoryId == category_id))
-    return result.scalar_one_or_none()
-
-async def get_category_by_name(db: AsyncSession, name: str):
-    result = await db.execute(select(models.Category).filter(models.Category.name == name))
-    return result.scalar_one_or_none()
-
-async def get_categories(db: AsyncSession, skip: int = 0, limit: int = 100):
-    result = await db.execute(select(models.Category).offset(skip).limit(limit))
-    return result.scalars().all()
-
-async def create_category(db: AsyncSession, category: schemas.CategoryCreate):
-    db_category = models.Category(name=category.name)
-    db.add(db_category)
-    await db.commit()
-    await db.refresh(db_category)
-    return db_category
-
-async def update_category(db: AsyncSession, category_id: int, category_update: schemas.CategoryUpdate):
-    db_category = await get_category(db, category_id)
-    if db_category:
-        db_category.name = category_update.name
-        await db.commit()
-        await db.refresh(db_category)
-    return db_category
-
-async def delete_category(db: AsyncSession, category_id: int):
-    db_category = await get_category(db, category_id)
-    if db_category:
-        await db.delete(db_category)
-        await db.commit()
-    return db_category
+async def get_categories(skip: int = 0, limit: int = 100):
+    response = await supabase.table('Category').select('*').range(skip, skip + limit -1).execute()
+    return response.data
 
 # --- Product Service Functions ---
 
-async def get_product(db: AsyncSession, product_id: int):
-    result = await db.execute(select(models.Product).filter(models.Product.productId == product_id))
-    return result.scalar_one_or_none()
-
-async def get_products(db: AsyncSession, skip: int = 0, limit: int = 100):
-    result = await db.execute(
-        select(models.Product)
-        .options(selectinload(models.Product.category))
-        .offset(skip)
-        .limit(limit)
-    )
-    return result.scalars().all()
+async def get_products(skip: int = 0, limit: int = 100):
+    response = await supabase.table('Product').select('*, category:Category(*)').range(skip, skip + limit - 1).execute()
+    return response.data
 
 async def create_product(db: AsyncSession, product: schemas.ProductCreate):
     db_product = models.Product(**product.model_dump())
