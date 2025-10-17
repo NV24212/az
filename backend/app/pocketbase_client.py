@@ -1,127 +1,109 @@
-import httpx
+from pocketbase import PocketBase
+from pocketbase.utils import ClientResponseError
 from .config import settings
 import structlog
+import asyncio
 
 logger = structlog.get_logger(__name__)
 
 class PocketBaseClient:
     def __init__(self):
-        self.base_url = f"{settings.POCKETBASE_URL}/api"
+        self.base_url = settings.POCKETBASE_URL
         self.admin_email = settings.POCKETBASE_ADMIN_EMAIL
         self.admin_password = settings.POCKETBASE_ADMIN_PASSWORD
-        self.admin_token = None
-        self.client = httpx.AsyncClient()
+        self.client = PocketBase(self.base_url)
+        self._lock = asyncio.Lock()
 
-    async def get_admin_token(self):
-        """Authenticates as admin and retrieves a token."""
-        if self.admin_token:
-            # Here you might add logic to check if the token is expired
-            return self.admin_token
-
-        logger.info("Authenticating with PocketBase as admin...")
-        try:
-            resp = await self.client.post(
-                f"{self.base_url}/admins/auth-with-password",
-                json={"identity": self.admin_email, "password": self.admin_password}
-            )
-            resp.raise_for_status()  # Raise an exception for bad status codes
-            self.admin_token = resp.json()["token"]
-            logger.info("Successfully authenticated with PocketBase.")
-            return self.admin_token
-        except httpx.HTTPStatusError as e:
-            logger.error(
-                "Failed to authenticate with PocketBase.",
-                status_code=e.response.status_code,
-                response_text=e.response.text
-            )
-            raise
-        except Exception as e:
-            logger.error("An unexpected error occurred during PocketBase authentication.", error=str(e))
-            raise
+    async def _ensure_admin_auth(self):
+        """
+        Ensures that the client is authenticated as an admin.
+        Uses a lock to prevent multiple concurrent authentication attempts.
+        """
+        async with self._lock:
+            if not self.client.auth_store.is_auth_record or self.client.auth_store.is_expired:
+                logger.info("Admin token is missing or expired. Authenticating with PocketBase...")
+                try:
+                    await self.client.admins.auth_with_password(
+                        self.admin_email, self.admin_password
+                    )
+                    logger.info("Successfully authenticated with PocketBase as admin.")
+                except ClientResponseError as e:
+                    logger.error(
+                        "Failed to authenticate with PocketBase as admin.",
+                        status_code=e.status,
+                        response=e.response
+                    )
+                    raise
+                except Exception as e:
+                    logger.error("An unexpected error occurred during PocketBase admin authentication.", error=str(e))
+                    raise
 
     async def get_records(self, collection: str, params: dict = None):
         """Fetches records from a collection."""
-        token = await self.get_admin_token()
-        headers = {"Authorization": f"Bearer {token}"}
+        await self._ensure_admin_auth()
         try:
-            resp = await self.client.get(
-                f"{self.base_url}/collections/{collection}/records",
-                headers=headers,
-                params=params
-            )
-            resp.raise_for_status()
-            return resp.json()
-        except httpx.HTTPStatusError as e:
+            return await self.client.collection(collection).get_list(1, 50, params)
+        except ClientResponseError as e:
             logger.error(
                 "Failed to fetch records from PocketBase.",
                 collection=collection,
-                status_code=e.response.status_code,
-                response_text=e.response.text
+                status_code=e.status,
+                response=e.response
             )
-            return None # Or raise an exception
+            return None
 
     async def create_record(self, collection: str, data: dict):
         """Creates a new record in a collection."""
-        token = await self.get_admin_token()
-        headers = {"Authorization": f"Bearer {token}"}
+        await self._ensure_admin_auth()
         try:
-            resp = await self.client.post(
-                f"{self.base_url}/collections/{collection}/records",
-                headers=headers,
-                json=data
-            )
-            resp.raise_for_status()
-            return resp.json()
-        except httpx.HTTPStatusError as e:
+            return await self.client.collection(collection).create(data)
+        except ClientResponseError as e:
             logger.error(
                 "Failed to create record in PocketBase.",
                 collection=collection,
-                status_code=e.response.status_code,
-                response_text=e.response.text
+                status_code=e.status,
+                response=e.response
             )
             return None
 
     async def update_record(self, collection: str, record_id: str, data: dict):
         """Updates a record in a collection."""
-        token = await self.get_admin_token()
-        headers = {"Authorization": f"Bearer {token}"}
+        await self._ensure_admin_auth()
         try:
-            resp = await self.client.patch(
-                f"{self.base_url}/collections/{collection}/records/{record_id}",
-                headers=headers,
-                json=data
-            )
-            resp.raise_for_status()
-            return resp.json()
-        except httpx.HTTPStatusError as e:
+            return await self.client.collection(collection).update(record_id, data)
+        except ClientResponseError as e:
             logger.error(
                 "Failed to update record in PocketBase.",
                 collection=collection,
                 record_id=record_id,
-                status_code=e.response.status_code,
-                response_text=e.response.text
+                status_code=e.status,
+                response=e.response
             )
             return None
 
     async def delete_record(self, collection: str, record_id: str):
         """Deletes a record from a collection."""
-        token = await self.get_admin_token()
-        headers = {"Authorization": f"Bearer {token}"}
+        await self._ensure_admin_auth()
         try:
-            resp = await self.client.delete(
-                f"{self.base_url}/collections/{collection}/records/{record_id}",
-                headers=headers
-            )
-            resp.raise_for_status()
+            await self.client.collection(collection).delete(record_id)
             return True
-        except httpx.HTTPStatusError as e:
+        except ClientResponseError as e:
             logger.error(
                 "Failed to delete record from PocketBase.",
                 collection=collection,
                 record_id=record_id,
-                status_code=e.response.status_code,
-                response_text=e.response.text
+                status_code=e.status,
+                response=e.response
             )
+            return False
+
+    async def health_check(self):
+        """Checks the health of the PocketBase service."""
+        try:
+            response = await self.client.health.check()
+            return response.get("code") == 200
+        except Exception as e:
+            logger.error("PocketBase health check failed.", error=str(e))
             return False
 
 # Create a single, reusable instance of the client
