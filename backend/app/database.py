@@ -9,8 +9,7 @@ db_url = make_url(settings.DATABASE_URL)
 db_url = db_url.set(drivername="postgresql+asyncpg")
 
 # When connecting directly to PostgreSQL, we use SQLAlchemy's default,
-# efficient connection pool. The NullPool and statement_cache_size settings
-# were only required for compatibility with pgbouncer.
+# efficient connection pool.
 engine = create_async_engine(db_url)
 
 SessionLocal = async_sessionmaker(autocommit=False, autoflush=False, bind=engine)
