@@ -36,10 +36,6 @@ async def lifespan(app: FastAPI):
             else:
                 raise
 
-    print("--- Initializing default settings ---")
-    async with AsyncSessionLocal() as session:
-        await initialize_database(session)
-
     yield
 
     # On shutdown
