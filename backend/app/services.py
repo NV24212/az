@@ -26,12 +26,20 @@ async def get_admin_credentials(db: AsyncSession):
         raise ValueError("Admin credentials not found in store settings.")
     return {"email": settings.adminEmail, "hashed_password": settings.hashed_password}
 
-async def get_current_admin_user(token: str, db: AsyncSession):
-    from fastapi import Depends, HTTPException, status
-    from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from .database import get_db
 
-    oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/admin/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/admin/login")
 
+async def get_current_admin_user(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Dependency to get the current admin user from a JWT token.
+    Raises HTTPException 401 if the token is invalid or the user is not found.
+    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -42,9 +50,13 @@ async def get_current_admin_user(token: str, db: AsyncSession):
         email: str | None = payload.get("sub")
         if email is None:
             raise credentials_exception
+
+        # Since this is an async function, we need to get the admin credentials
+        # within this async context.
         admin_creds = await get_admin_credentials(db)
         if email != admin_creds["email"]:
             raise credentials_exception
+
         return {"email": email}
     except (jwt.JWTError, ValueError):
         raise credentials_exception
