@@ -272,7 +272,6 @@ class PocketBaseClient:
     async def get_full_list(
         self,
         collection: str,
-        batch_size: int = 200,
         filter_query: Optional[str] = None,
         sort: Optional[str] = None,
         expand: Optional[str] = None
@@ -280,9 +279,10 @@ class PocketBaseClient:
         """
         Get all records from a collection (auto-paginated).
 
+        Note: The batch size is handled automatically by the SDK (200 items per request by default).
+
         Args:
             collection: Name of the collection
-            batch_size: Number of records to fetch per batch (default: 200)
             filter_query: Optional filter query string
             sort: Optional sort parameter
             expand: Optional expand parameter for relations
@@ -293,6 +293,7 @@ class PocketBaseClient:
         await self._ensure_admin_auth()
 
         try:
+            # Build query parameters dictionary
             params = {}
             if filter_query:
                 params['filter'] = filter_query
@@ -301,9 +302,9 @@ class PocketBaseClient:
             if expand:
                 params['expand'] = expand
 
+            # get_full_list() accepts query_params but NOT batch as a direct parameter
             records = await self.client.collection(collection).get_full_list(
-                batch=batch_size,
-                query_params=params
+                query_params=params if params else None
             )
             logger.info("Full list retrieved", collection=collection, count=len(records))
             return records
