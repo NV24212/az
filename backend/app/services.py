@@ -1,24 +1,11 @@
-import bcrypt
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from . import models, schemas
 from jose import jwt
 from datetime import datetime, timedelta, timezone
 from .config import settings
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from .pocketbase_client import pb_client
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """
-    Verifies a plain-text password against a hashed password.
-
-    Args:
-        plain_password: The password to verify.
-        hashed_password: The hashed password from the database.
-
-    Returns:
-        True if the passwords match, False otherwise.
-    """
-    # bcrypt.checkpw requires the hashed password to be in bytes.
-    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/admin/login")
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
@@ -30,26 +17,10 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
-async def get_admin_credentials(db: AsyncSession):
-    result = await db.execute(select(models.StoreSettings).filter(models.StoreSettings.id == 1))
-    settings = result.scalar_one_or_none()
-    if not settings:
-        raise ValueError("Admin credentials not found in store settings.")
-    return {"email": settings.adminEmail, "hashed_password": settings.hashed_password}
-
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-from .database import get_db
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/admin/login")
-
-async def get_current_admin_user(
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db)
-):
+async def get_current_admin_user(token: str = Depends(oauth2_scheme)):
     """
-    Dependency to get the current admin user from a JWT token.
-    Raises HTTPException 401 if the token is invalid or the user is not found.
+    Dependency to validate the JWT token and return the user's email.
+    Raises HTTPException 401 if the token is invalid.
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -61,178 +32,30 @@ async def get_current_admin_user(
         email: str | None = payload.get("sub")
         if email is None:
             raise credentials_exception
-
-        # Since this is an async function, we need to get the admin credentials
-        # within this async context.
-        admin_creds = await get_admin_credentials(db)
-        if email != admin_creds["email"]:
-            raise credentials_exception
-
         return {"email": email}
-    except (jwt.JWTError, ValueError):
+    except jwt.JWTError:
         raise credentials_exception
 
-async def get_products(db: AsyncSession, skip: int = 0, limit: int = 100):
-    result = await db.execute(select(models.Product).offset(skip).limit(limit))
-    return result.scalars().all()
+async def get_products():
+    return await pb_client.get_records("products")
 
-async def get_categories(db: AsyncSession, skip: int = 0, limit: int = 100):
-    result = await db.execute(select(models.Category).offset(skip).limit(limit))
-    return result.scalars().all()
+async def create_product(product_data: dict):
+    return await pb_client.create_record("products", product_data)
 
-async def create_customer(db: AsyncSession, customer: schemas.CustomerCreate):
-    db_customer = models.Customer(**customer.model_dump())
-    db.add(db_customer)
-    await db.commit()
-    await db.refresh(db_customer)
-    return db_customer
+async def update_product(product_id: str, product_data: dict):
+    return await pb_client.update_record("products", product_id, product_data)
 
-async def create_order(db: AsyncSession, order: schemas.OrderCreate):
-    total_amount = 0
-    for item in order.items:
-        result = await db.execute(select(models.Product).filter(models.Product.productId == item.productId))
-        product = result.scalar_one()
-        total_amount += product.price * item.quantity
+async def delete_product(product_id: str):
+    return await pb_client.delete_record("products", product_id)
 
-    db_order = models.Order(
-        customerId=order.customerId,
-        totalAmount=total_amount,
-        status="PENDING"
-    )
-    db.add(db_order)
-    await db.commit()
-    await db.refresh(db_order)
+async def get_categories():
+    return await pb_client.get_records("categories")
 
-    for item in order.items:
-        result = await db.execute(select(models.Product).filter(models.Product.productId == item.productId))
-        product = result.scalar_one()
-        db_order_item = models.OrderItem(
-            orderId=db_order.orderId,
-            productId=item.productId,
-            quantity=item.quantity,
-            priceAtPurchase=product.price
-        )
-        db.add(db_order_item)
-    await db.commit()
-    await db.refresh(db_order)
-    return db_order
+async def create_category(category_data: dict):
+    return await pb_client.create_record("categories", category_data)
 
-async def create_product(db: AsyncSession, product: schemas.ProductCreate):
-    db_product = models.Product(**product.model_dump())
-    db.add(db_product)
-    await db.commit()
-    await db.refresh(db_product)
-    return db_product
+async def update_category(category_id: str, category_data: dict):
+    return await pb_client.update_record("categories", category_id, category_data)
 
-async def update_product(db: AsyncSession, product_id: int, product_update: schemas.ProductUpdate):
-    result = await db.execute(select(models.Product).filter(models.Product.productId == product_id))
-    db_product = result.scalar_one_or_none()
-    if db_product:
-        for key, value in product_update.model_dump(exclude_unset=True).items():
-            setattr(db_product, key, value)
-        await db.commit()
-        await db.refresh(db_product)
-    return db_product
-
-async def delete_product(db: AsyncSession, product_id: int):
-    result = await db.execute(select(models.Product).filter(models.Product.productId == product_id))
-    db_product = result.scalar_one_or_none()
-    if db_product:
-        await db.delete(db_product)
-        await db.commit()
-    return db_product
-
-async def create_category(db: AsyncSession, category: schemas.CategoryCreate):
-    db_category = models.Category(**category.model_dump())
-    db.add(db_category)
-    await db.commit()
-    await db.refresh(db_category)
-    return db_category
-
-async def update_category(db: AsyncSession, category_id: int, category_update: schemas.CategoryUpdate):
-    result = await db.execute(select(models.Category).filter(models.Category.categoryId == category_id))
-    db_category = result.scalar_one_or_none()
-    if db_category:
-        for key, value in category_update.model_dump(exclude_unset=True).items():
-            setattr(db_category, key, value)
-        await db.commit()
-        await db.refresh(db_category)
-    return db_category
-
-async def delete_category(db: AsyncSession, category_id: int):
-    result = await db.execute(select(models.Category).filter(models.Category.categoryId == category_id))
-    db_category = result.scalar_one_or_none()
-    if db_category:
-        await db.delete(db_category)
-        await db.commit()
-    return db_category
-
-async def get_customers(db: AsyncSession, skip: int = 0, limit: int = 100):
-    result = await db.execute(select(models.Customer).offset(skip).limit(limit))
-    return result.scalars().all()
-
-async def get_customer(db: AsyncSession, customer_id: int):
-    result = await db.execute(select(models.Customer).filter(models.Customer.customerId == customer_id))
-    return result.scalar_one_or_none()
-
-async def update_customer(db: AsyncSession, customer_id: int, customer_update: schemas.CustomerUpdate):
-    result = await db.execute(select(models.Customer).filter(models.Customer.customerId == customer_id))
-    db_customer = result.scalar_one_or_none()
-    if db_customer:
-        for key, value in customer_update.model_dump(exclude_unset=True).items():
-            setattr(db_customer, key, value)
-        await db.commit()
-        await db.refresh(db_customer)
-    return db_customer
-
-async def delete_customer(db: AsyncSession, customer_id: int):
-    result = await db.execute(select(models.Customer).filter(models.Customer.customerId == customer_id))
-    db_customer = result.scalar_one_or_none()
-    if db_customer:
-        await db.delete(db_customer)
-        await db.commit()
-    return db_customer
-
-async def get_orders(db: AsyncSession, skip: int = 0, limit: int = 100):
-    result = await db.execute(select(models.Order).offset(skip).limit(limit))
-    return result.scalars().all()
-
-async def get_order(db: AsyncSession, order_id: int):
-    result = await db.execute(select(models.Order).filter(models.Order.orderId == order_id))
-    return result.scalar_one_or_none()
-
-async def update_order_status(db: AsyncSession, order_id: int, status: schemas.OrderStatus):
-    result = await db.execute(select(models.Order).filter(models.Order.orderId == order_id))
-    db_order = result.scalar_one_or_none()
-    if db_order:
-        db_order.status = status.value
-        await db.commit()
-        await db.refresh(db_order)
-    return db_order
-
-async def delete_order(db: AsyncSession, order_id: int):
-    result = await db.execute(select(models.Order).filter(models.Order.orderId == order_id))
-    db_order = result.scalar_one_or_none()
-    if db_order:
-        await db.delete(db_order)
-        await db.commit()
-    return db_order
-
-async def get_settings(db: AsyncSession):
-    result = await db.execute(select(models.StoreSettings).filter(models.StoreSettings.id == 1))
-    return result.scalar_one_or_none()
-
-async def update_settings(db: AsyncSession, settings_update: schemas.StoreSettingsUpdate):
-    result = await db.execute(select(models.StoreSettings).filter(models.StoreSettings.id == 1))
-    db_settings = result.scalar_one_or_none()
-    if db_settings:
-        update_data = settings_update.model_dump(exclude_unset=True)
-        if 'password' in update_data and update_data['password']:
-            hashed_password = bcrypt.hashpw(update_data['password'].encode('utf-8'), bcrypt.gensalt())
-            db_settings.hashed_password = hashed_password.decode('utf-8')
-            del update_data['password']
-        for key, value in update_data.items():
-            setattr(db_settings, key, value)
-        await db.commit()
-        await db.refresh(db_settings)
-    return db_settings
+async def delete_category(category_id: str):
+    return await pb_client.delete_record("categories", category_id)

@@ -6,9 +6,12 @@ class Settings(BaseSettings):
     # extra environment variables not defined in this model.
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')
 
-    DATABASE_URL: str
-    AZHAR_ADMIN_EMAIL: str
     CORS_ORIGINS: str = "*"
+
+    # PocketBase settings
+    POCKETBASE_URL: str
+    POCKETBASE_ADMIN_EMAIL: str
+    POCKETBASE_ADMIN_PASSWORD: str
 
     # JWT settings
     SECRET_KEY: str
