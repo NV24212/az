@@ -24,10 +24,16 @@ if "pooler.supabase.com" not in DATABASE_URL:
 
 
 
+print(f"--- DATABASE_URL: {DATABASE_URL} ---")
+engine_args = {
+    "poolclass": NullPool,
+    "connect_args": {"statement_cache_size": 0}
+}
+print(f"--- Engine Args: {engine_args} ---")
+
 engine = create_async_engine(
     DATABASE_URL,
-    poolclass=NullPool,
-    connect_args={"statement_cache_size": 0}
+    **engine_args
 )
 
 AsyncSessionLocal = sessionmaker(
