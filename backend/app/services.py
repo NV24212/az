@@ -24,7 +24,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(password=plain_password_bytes, hashed_password=hashed_password_bytes)
 
 async def get_admin_credentials():
-    response = await supabase.table('StoreSettings').select('adminEmail, hashed_password').eq('id', 1).single().execute()
+    response = supabase.table('StoreSettings').select('adminEmail, hashed_password').eq('id', 1).single().execute()
     if not response.data:
         raise ValueError("Admin credentials not found in store settings.")
     return {"email": response.data['adminEmail'], "hashed_password": response.data['hashed_password']}
@@ -60,15 +60,11 @@ async def get_current_admin_user(token: str = Depends(oauth2_scheme)):
 # --- Category Service Functions ---
 
 async def get_categories(skip: int = 0, limit: int = 100):
-    response = await supabase.table('Category').select('*').range(skip, skip + limit -1).execute()
+    response = supabase.table('Category').select('*').range(skip, skip + limit -1).execute()
     return response.data
 
 # --- Product Service Functions ---
 
 async def get_products(skip: int = 0, limit: int = 100):
-    response = await supabase.table('Product').select('*, category:Category(*)').range(skip, skip + limit - 1).execute()
+    response = supabase.table('Product').select('*, category:Category(*)').range(skip, skip + limit - 1).execute()
     return response.data
-
-# The remaining functions (create, update, delete for all models) will be implemented
-# in a similar fashion, using the Supabase client instead of SQLAlchemy.
-# For now, I will leave them as they are and focus on the public endpoints.
