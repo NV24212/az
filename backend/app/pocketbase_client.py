@@ -153,9 +153,7 @@ class PocketBaseClient:
                 params['expand'] = expand
 
             records = await self.client.collection(collection).get_list(
-                page,
-                per_page,
-                params
+                page, per_page, params
             )
             return records
         except httpx.HTTPStatusError as e:
@@ -302,7 +300,7 @@ class PocketBaseClient:
             if expand:
                 params['expand'] = expand
 
-            # get_full_list() accepts query_params but NOT batch as a direct parameter
+            # get_full_list() accepts a parameters dictionary directly
             records = await self.client.collection(collection).get_full_list(
                 params
             )
