@@ -1,5 +1,6 @@
+from __future__ import annotations
 from pydantic import BaseModel, model_validator
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 # --- Pydantic Models for Authentication ---
 class AdminLoginRequest(BaseModel):
@@ -24,7 +25,7 @@ class Category(CategoryBase):
     id: str
     collectionId: str
     collectionName: str
-    category: 'Category' | None = None
+    category: Optional['Category'] = None
 
     @model_validator(mode='before')
     def move_expand_to_category(cls, data: Dict[str, Any]) -> Dict[str, Any]:
