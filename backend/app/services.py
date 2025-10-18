@@ -37,7 +37,7 @@ async def get_current_admin_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
 
 async def get_products(pb_client: PocketBaseClient):
-    return await pb_client.get_full_list("products", {"expand": "categoryId"})
+    return await pb_client.get_full_list("products", params={"expand": "categoryId"})
 
 async def create_product(pb_client: PocketBaseClient, product_data: dict):
     return await pb_client.create_record("products", product_data)
