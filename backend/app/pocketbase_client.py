@@ -5,7 +5,6 @@ FastAPI's dependency injection system.
 from pocketbase import PocketBase
 from typing import Optional, Dict, Any
 import structlog
-from .errors import handle_pocketbase_error
 
 logger = structlog.get_logger(__name__)
 
@@ -21,7 +20,7 @@ class PocketBaseClient:
         """
         Get all records from a collection (auto-paginated).
         """
-        records = await self.client.collection(collection).get_full_list(params or {})
+        records = await self.client.collection(collection).get_full_list(list_options=params or {})
         logger.info("Full list retrieved", collection=collection, count=len(records))
         return records
 
@@ -35,7 +34,7 @@ class PocketBaseClient:
         """
         Get a paginated list of records from a collection.
         """
-        records = await self.client.collection(collection).get_list(page, per_page, params or {})
+        records = await self.client.collection(collection).get_list(page, per_page, list_options=params or {})
         return records
 
     async def get_record(
@@ -117,4 +116,5 @@ class PocketBaseClient:
             if "already exists" in str(e).lower():
                 logger.warn("Collection already exists, skipping creation.", collection_name=schema.get("name"))
             else:
+                from .errors import handle_pocketbase_error
                 handle_pocketbase_error(e)
