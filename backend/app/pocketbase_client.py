@@ -153,9 +153,9 @@ class PocketBaseClient:
                 params['expand'] = expand
 
             records = await self.client.collection(collection).get_list(
-                page=page,
-                per_page=per_page,
-                query_params=params
+                page,
+                per_page,
+                params
             )
             return records
         except httpx.HTTPStatusError as e:
@@ -304,7 +304,7 @@ class PocketBaseClient:
 
             # get_full_list() accepts query_params but NOT batch as a direct parameter
             records = await self.client.collection(collection).get_full_list(
-                query_params=params if params else None
+                params
             )
             logger.info("Full list retrieved", collection=collection, count=len(records))
             return records
