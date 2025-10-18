@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from .config import settings
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from .pocketbase_client import pb_client
+from .pocketbase_client import PocketBaseClient
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
 
@@ -36,26 +36,26 @@ async def get_current_admin_user(token: str = Depends(oauth2_scheme)):
     except jwt.JWTError:
         raise credentials_exception
 
-async def get_products():
-    return await pb_client.get_full_list("products", expand="categoryId")
+async def get_products(pb_client: PocketBaseClient):
+    return await pb_client.get_full_list("products", {"expand": "categoryId"})
 
-async def create_product(product_data: dict):
+async def create_product(pb_client: PocketBaseClient, product_data: dict):
     return await pb_client.create_record("products", product_data)
 
-async def update_product(product_id: str, product_data: dict):
+async def update_product(pb_client: PocketBaseClient, product_id: str, product_data: dict):
     return await pb_client.update_record("products", product_id, product_data)
 
-async def delete_product(product_id: str):
+async def delete_product(pb_client: PocketBaseClient, product_id: str):
     return await pb_client.delete_record("products", product_id)
 
-async def get_categories():
-    return await pb_client.get_full_list("categories", sort="name")
+async def get_categories(pb_client: PocketBaseClient):
+    return await pb_client.get_full_list("categories", {"sort": "name"})
 
-async def create_category(category_data: dict):
+async def create_category(pb_client: PocketBaseClient, category_data: dict):
     return await pb_client.create_record("categories", category_data)
 
-async def update_category(category_id: str, category_data: dict):
+async def update_category(pb_client: PocketBaseClient, category_id: str, category_data: dict):
     return await pb_client.update_record("categories", category_id, category_data)
 
-async def delete_category(category_id: str):
+async def delete_category(pb_client: PocketBaseClient, category_id: str):
     return await pb_client.delete_record("categories", category_id)
