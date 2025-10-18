@@ -48,12 +48,25 @@ class Product(ProductBase):
     id: str
     collectionId: str
     collectionName: str
+
+    # PocketBase returns categoryId, but Pydantic expects 'category' object
+    categoryId: str
     category: Optional[Category] = None
 
     @model_validator(mode='before')
+    @classmethod
     def move_expand_to_category(cls, data: Dict[str, Any]) -> Dict[str, Any]:
-        if 'expand' in data and 'categoryId' in data.get('expand', {}):
-            data['category'] = data['expand']['categoryId']
+        # FIX: Ensure we check for 'expand' first.
+        expand_data = data.get('expand')
+
+        if expand_data and isinstance(expand_data, dict):
+            # The expanded data key is the relation field name (categoryId).
+            # The value is the Category object.
+            # We copy that object into the 'category' field, which matches the Pydantic model.
+            if 'categoryId' in expand_data:
+                # FIX: Assign the expanded Category object to the 'category' field
+                data['category'] = expand_data['categoryId']
+
         return data
 
 Product.model_rebuild()
