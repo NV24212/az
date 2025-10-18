@@ -5,27 +5,29 @@ import ProductCard from '../components/ProductCard';
 import Loading from '../components/ui/Loading';
 import ProductCardSkeleton from '../components/ProductCardSkeleton';
 
-type Product = {
-  productId: number;
+type Category = {
+  id: string;
   name: string;
+};
+
+type Product = {
+  id: string;
+  name:string;
   description?: string;
   price: number;
   imageUrl?: string;
-  categoryId: number;
-};
-
-type Category = {
-  categoryId: number;
-  name: string;
+  category?: Category;
 };
 
 export default function Store() {
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const { data: products, isLoading: isLoadingProducts } = useQuery<Product[]>({
-    queryKey: ['products', selectedCategory],
+    queryKey: ["products", selectedCategory],
     queryFn: async () => {
-      const url = selectedCategory ? `/api/products?categoryId=${selectedCategory}` : '/api/products';
+      const url = selectedCategory
+        ? `/api/products?categoryId=${selectedCategory}`
+        : "/api/products";
       const res = await api.get(url);
       return res.data;
     },
@@ -50,7 +52,15 @@ export default function Store() {
             </div>
           ) : (
             categories?.map((category) => (
-              <button key={category.categoryId} onClick={() => setSelectedCategory(category.categoryId)} className={`px-5 py-2 text-sm font-medium rounded-full ${selectedCategory === category.categoryId ? 'brand-bg text-white' : 'text-slate-600 hover:bg-slate-100 transition-colors'}`}>
+              <button
+                key={category.id}
+                onClick={() => setSelectedCategory(category.id)}
+                className={`px-5 py-2 text-sm font-medium rounded-full ${
+                  selectedCategory === category.id
+                    ? "brand-bg text-white"
+                    : "text-slate-600 hover:bg-slate-100 transition-colors"
+                }`}
+              >
                 {category.name}
               </button>
             ))
@@ -66,7 +76,7 @@ export default function Store() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
           {products?.map((product) => (
-            <ProductCard key={product.productId} {...product} />
+            <ProductCard key={product.id} {...product} />
           ))}
         </div>
       )}
