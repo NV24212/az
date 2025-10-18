@@ -59,8 +59,6 @@ class PocketBaseClient:
             bool: True if the PocketBase instance is responsive and healthy.
         """
         try:
-            # PocketBase has a dedicated health check endpoint: /api/health
-            # The python-pocketbase client provides a direct method for this.
             response = await self.client.health.check()
             return response.get("code") == 200
         except Exception as e:
@@ -168,9 +166,7 @@ class PocketBaseClient:
             if expand:
                 params['expand'] = expand
 
-            records = await self.client.collection(collection).get_list(
-                page, per_page, params
-            )
+            records = await self.client.collection(collection).get_list(page, per_page, params)
             return records
         except httpx.HTTPStatusError as e:
             logger.error(
@@ -317,9 +313,7 @@ class PocketBaseClient:
                 params['expand'] = expand
 
             # get_full_list() accepts a parameters dictionary directly
-            records = await self.client.collection(collection).get_full_list(
-                params
-            )
+            records = await self.client.collection(collection).get_full_list(params)
             logger.info("Full list retrieved", collection=collection, count=len(records))
             return records
         except httpx.HTTPStatusError as e:
