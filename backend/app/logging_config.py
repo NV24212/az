@@ -5,55 +5,45 @@ import os
 
 def setup_logging():
     """
-    Set up structured logging for the application, correctly integrating with
-    the standard logging library. This configuration ensures that logs from
-    all modules are captured and processed by structlog.
+    Set up a simple, reliable structured logging configuration for the application.
+    This version avoids dictConfig to ensure stability and visibility of logs.
     """
-    log_level_name = os.environ.get("LOG_LEVEL", "INFO").upper()
-    log_level = getattr(logging, log_level_name, logging.INFO)
+    log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
 
-    # Define processors for structlog. These will process all log records.
+    # Define a stable set of processors for structlog
     processors = [
-        structlog.contextvars.merge_contextvars,
-        structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
+        structlog.stdlib.add_logger_name,
         structlog.processors.TimeStamper(fmt="iso", utc=True),
-        structlog.stdlib.PositionalArgumentsFormatter(),
         structlog.processors.StackInfoRenderer(),
+        # This processor is crucial for rendering exception info
         structlog.processors.format_exc_info,
+        # Use a JSON renderer for machine-readable logs
+        structlog.processors.JSONRenderer(),
     ]
 
-    # Use a console renderer for development (if a TTY is attached) for readability.
-    # Use a JSON renderer for production for machine-readable logs.
-    if sys.stdout.isatty():
-        processors.append(structlog.dev.ConsoleRenderer())
-    else:
-        processors.append(structlog.processors.JSONRenderer())
+    # Configure structlog to use these processors
+    structlog.configure(
+        processors=processors,
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
+        cache_logger_on_first_use=True,
+    )
 
-    # Configure the standard logging library to use structlog's processors.
-    # This is the key part to make sure everything is integrated.
-    logging.config.dictConfig({
-        "version": 1,
-        "disable_existing_loggers": False, # Keep existing loggers
-        "formatters": {
-            "default": {
-                "()": structlog.stdlib.ProcessorFormatter,
-                "processors": processors,
-                "foreign_pre_chain": [structlog.stdlib.add_log_level],
-            },
-        },
-        "handlers": {
-            "default": {
-                "level": log_level_name,
-                "class": "logging.StreamHandler",
-                "formatter": "default",
-            },
-        },
-        "loggers": {
-            "": { # Root logger
-                "handlers": ["default"],
-                "level": log_level_name,
-                "propagate": True,
-            },
-        }
-    })
+    # Configure the root logger to use a simple stream handler
+    # This sends logs to standard output, which is what we need to see them
+    handler = logging.StreamHandler(sys.stdout)
+
+    # We do not set a formatter on the handler, as structlog handles the formatting
+    # This prevents the conflicts we were seeing before
+
+    # Get the root logger and clear any existing handlers
+    root_logger = logging.getLogger()
+    for h in root_logger.handlers:
+        root_logger.removeHandler(h)
+
+    root_logger.addHandler(handler)
+    root_logger.setLevel(log_level)
+
+    print("--- LOGGING HAS BEEN RELIABLY CONFIGURED ---")
