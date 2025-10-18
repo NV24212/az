@@ -45,5 +45,12 @@ async def root():
 async def health():
     return {"status": "healthy"}
 
+@app.head("/health", status_code=200)
+async def health_head():
+    """
+    Responds to HEAD requests for health checks from services like Dokploy.
+    """
+    return None
+
 app.include_router(api_router)
 app.include_router(admin_router)
