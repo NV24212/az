@@ -24,7 +24,7 @@ class Category(CategoryBase):
     id: str
     collectionId: str
     collectionName: str
-    category: Category | None = None
+    category: 'Category' | None = None
 
     @model_validator(mode='before')
     def move_expand_to_category(cls, data: Dict[str, Any]) -> Dict[str, Any]:
