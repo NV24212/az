@@ -3,6 +3,7 @@ from typing import List
 from . import services, schemas
 from .dependencies import PBAdminClient
 import httpx
+from pocketbase.models.errors import PocketBaseNotFoundError
 
 # Main router for the API
 router = APIRouter(prefix="/api")
@@ -29,20 +30,39 @@ async def login_for_access_token(form_data: schemas.AdminLoginRequest, pb_client
 
 # --- Public Endpoints ---
 @router.get("/status")
-async def status_check(pb_client: PBAdminClient):
+async def status_check():
     """Checks the API status and the connection to PocketBase."""
-    # The dependency now implicitly checks the health.
-    return {"api": "ok", "pocketbase": "healthy"}
+    # This endpoint does not use the admin client dependency to avoid
+    # unnecessary authentication calls for a simple health check.
+    from .dependencies import get_pocketbase_admin_client
+    pb_client = await anext(get_pocketbase_admin_client())
+    pocketbase_healthy = await pb_client.health_check()
+    return {
+        "api": "ok",
+        "pocketbase": "healthy" if pocketbase_healthy else "unhealthy"
+    }
 
 @router.get("/products", response_model=List[schemas.Product])
 async def list_products(pb_client: PBAdminClient):
     """Retrieves a list of all products from PocketBase."""
-    return await services.get_products(pb_client)
+    try:
+        return await services.get_products(pb_client)
+    except PocketBaseNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database error: The 'products' collection is missing or inaccessible."
+        )
 
 @router.get("/categories", response_model=List[schemas.Category])
 async def list_categories(pb_client: PBAdminClient):
-    """Retrieves a list of all product categories from PocketBase."""
-    return await services.get_categories(pb_client)
+    """Retrierieves a list of all product categories from PocketBase."""
+    try:
+        return await services.get_categories(pb_client)
+    except PocketBaseNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database error: The 'categories' collection is missing or inaccessible."
+        )
 
 # --- Admin Endpoints ---
 @admin_router.get("/status")
