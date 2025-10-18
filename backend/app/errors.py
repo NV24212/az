@@ -1,5 +1,30 @@
-from fastapi import HTTPException, status
+from fastapi import Request, status
+from fastapi.responses import JSONResponse
+from fastapi import HTTPException
 import httpx
+import structlog
+import traceback
+
+logger = structlog.get_logger(__name__)
+
+
+async def global_exception_handler(request: Request, exc: Exception):
+    """
+    A global exception handler to catch all unhandled exceptions, log them
+    in a structured format, and return a generic 500 error response.
+    """
+    logger.error(
+        "unhandled_exception",
+        exc_info=True,
+        error=str(exc),
+        traceback="".join(traceback.format_exc()),
+        request_method=request.method,
+        request_url=str(request.url),
+    )
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "An unexpected internal server error occurred."},
+    )
 
 def handle_pocketbase_error(e: Exception):
     """
