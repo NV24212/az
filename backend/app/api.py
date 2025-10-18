@@ -3,10 +3,6 @@ from typing import List
 from . import services, schemas
 from .dependencies import PBAdminClient
 import httpx
-import structlog
-import traceback
-
-logger = structlog.get_logger(__name__)
 
 # Main router for the API
 router = APIRouter(prefix="/api")
@@ -47,24 +43,13 @@ async def status_check():
 
 @router.get("/products", response_model=List[schemas.Product])
 async def list_products(pb_client: PBAdminClient):
-    """Retrievelist_categoriess a list of all products from PocketBase."""
-    try:
-        # Pydantic validation happens implicitly on return
-        return await services.get_products(pb_client)
-    except Exception as e:
-        # CRITICAL: Log the detailed traceback here before the global handler catches it
-        logger.error("product_list_failed", error=str(e), traceback=traceback.format_exc()) # Ensure traceback is imported
-        # Allow the exception to continue to the global handler for the 500 response
-        raise # The global handler will catch this and report 500
+    """Retrieves a list of all products from PocketBase."""
+    return await services.get_products(pb_client)
 
 @router.get("/categories", response_model=List[schemas.Category])
 async def list_categories(pb_client: PBAdminClient):
-    """Retrierieves a list of all product categories from PocketBase."""
-    try:
-        return await services.get_categories(pb_client)
-    except Exception as e:
-        logger.error("category_list_failed", error=str(e), traceback=traceback.format_exc())
-        raise
+    """Retrieves a list of all product categories from PocketBase."""
+    return await services.get_categories(pb_client)
 
 # --- Admin Endpoints ---
 @admin_router.get("/status")
