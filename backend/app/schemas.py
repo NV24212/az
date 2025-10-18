@@ -48,11 +48,11 @@ class Product(ProductBase):
     id: str
     collectionId: str
     collectionName: str
-    category: Category
+    category: Optional[Category] = None
 
     @model_validator(mode='before')
     def move_expand_to_category(cls, data: Dict[str, Any]) -> Dict[str, Any]:
-        if 'expand' in data and 'categoryId' in data['expand']:
+        if 'expand' in data and 'categoryId' in data.get('expand', {}):
             data['category'] = data['expand']['categoryId']
         return data
 
