@@ -5,6 +5,7 @@ FastAPI's dependency injection system.
 from pocketbase import PocketBase
 from typing import Optional, Dict, Any
 import structlog
+from .errors import handle_pocketbase_error
 
 logger = structlog.get_logger(__name__)
 
@@ -102,3 +103,18 @@ class PocketBaseClient:
         except Exception as e:
             logger.error("PocketBase health check failed", error=str(e))
             return False
+
+    async def create_collection(self, schema: Dict[str, Any]):
+        """
+        Creates a new collection from a schema.
+        """
+        try:
+            await self.client.collections.create(schema)
+            logger.info("Collection created successfully", collection_name=schema.get("name"))
+        except Exception as e:
+            # If the collection already exists, PocketBase might return a 400
+            # We can safely ignore this for our startup logic
+            if "already exists" in str(e).lower():
+                logger.warn("Collection already exists, skipping creation.", collection_name=schema.get("name"))
+            else:
+                handle_pocketbase_error(e)
