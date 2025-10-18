@@ -111,9 +111,9 @@ class PocketBaseClient:
             await self.client.collections.create(schema)
             logger.info("Collection created successfully", collection_name=schema.get("name"))
         except Exception as e:
-            # If the collection already exists, PocketBase might return a 400
-            # We can safely ignore this for our startup logic
-            if "already exists" in str(e).lower():
+            # If the collection already exists, PocketBase returns a 400 with a specific message.
+            # We can safely ignore this error during the startup routine.
+            if "name must be unique" in str(e).lower():
                 logger.warn("Collection already exists, skipping creation.", collection_name=schema.get("name"))
             else:
                 from .errors import handle_pocketbase_error
