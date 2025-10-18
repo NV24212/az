@@ -44,6 +44,19 @@ class PocketBaseClient:
         except Exception as e:
             handle_pocketbase_error(e)
 
+    async def health_check(self) -> bool:
+        """
+        Pings the PocketBase health endpoint.
+
+        Returns:
+            bool: True if the PocketBase instance is responsive and healthy.
+        """
+        try:
+            response = await self.client.health.check()
+            return response.get("code") == 200
+        except Exception as e:
+            logger.error("PocketBase health check failed", error=str(e))
+            return False
     async def get_record(
         self,
         collection: str,

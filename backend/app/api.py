@@ -4,6 +4,7 @@ from . import services, schemas
 from .dependencies import PBAdminClient
 import httpx
 from pocketbase.models.errors import PocketBaseNotFoundError
+from pocketbase.models.errors import PocketBaseNotFoundError
 
 # Main router for the API
 router = APIRouter(prefix="/api")
