@@ -56,16 +56,32 @@ class Product(ProductBase):
     @model_validator(mode='before')
     @classmethod
     def move_expand_to_category(cls, data: Dict[str, Any]) -> Dict[str, Any]:
-        # FIX: Ensure we check for 'expand' first.
-        expand_data = data.get('expand')
 
-        if expand_data and isinstance(expand_data, dict):
-            # The expanded data key is the relation field name (categoryId).
-            # The value is the Category object.
-            # We copy that object into the 'category' field, which matches the Pydantic model.
-            if 'categoryId' in expand_data:
-                # FIX: Assign the expanded Category object to the 'category' field
-                data['category'] = expand_data['categoryId']
+        # 1. Safely retrieve the 'expand' dictionary, defaulting to empty dict
+        expand_data = data.get('expand', {})
+
+        # 2. Check if the required expanded field exists in the 'expand' data
+        # If the query was?expand=categoryId, the key in 'expand' is 'categoryId'
+        if 'categoryId' in expand_data:
+
+            # 3. CRITICAL: PocketBase may return a list of records for a one-to-one relation
+            # if maxSelect is 1. Check if it's a list and take the first item, or take the item directly.
+            expanded_category = expand_data['categoryId']
+
+            if isinstance(expanded_category, list) and len(expanded_category) > 0:
+                # If it's a list (maxSelect: 1, but still wrapped in a list)
+                data['category'] = expanded_category
+            elif isinstance(expanded_category, dict):
+                # If it's a single dictionary (the Category object)
+                data['category'] = expanded_category
+            else:
+                # Fail gracefully if data is weirdly structured, leaving 'category' as None
+                data['category'] = None
+
+        # Ensure the original 'categoryId' field is retained for the ID string
+        # and delete the 'expand' key before Pydantic processes the rest
+        if 'expand' in data:
+            del data['expand']
 
         return data
 
