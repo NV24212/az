@@ -6,52 +6,54 @@ import os
 def setup_logging():
     """
     Set up structured logging for the application, correctly integrating with
-    the standard logging library.
+    the standard logging library. This configuration ensures that logs from
+    all modules are captured and processed by structlog.
     """
-    log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
-    dev_logging = os.environ.get("DEV_LOGGING", "false").lower() == "true"
+    log_level_name = os.environ.get("LOG_LEVEL", "INFO").upper()
+    log_level = getattr(logging, log_level_name, logging.INFO)
 
-    # Common processors for both dev and prod
-    shared_processors = [
+    # Define processors for structlog. These will process all log records.
+    processors = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
-        structlog.stdlib.ExtraAdder(), # Adds extra context from standard library log calls
-        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.TimeStamper(fmt="iso", utc=True),
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
     ]
 
-    # Configure the structlog processor chain
-    if dev_logging or (sys.stdout.isatty() and not dev_logging == "false"):
-        # Human-readable logs for development
-        processors = shared_processors + [structlog.dev.ConsoleRenderer()]
+    # Use a console renderer for development (if a TTY is attached) for readability.
+    # Use a JSON renderer for production for machine-readable logs.
+    if sys.stdout.isatty():
+        processors.append(structlog.dev.ConsoleRenderer())
     else:
-        # Machine-readable JSON logs for production
-        processors = shared_processors + [
-            structlog.processors.dict_tracebacks, # Ensure tracebacks are rendered correctly
-            structlog.processors.JSONRenderer(),
-        ]
+        processors.append(structlog.processors.JSONRenderer())
 
-    # Integrate structlog with the standard logging library
-    structlog.configure(
-        processors=processors,
-        logger_factory=structlog.stdlib.LoggerFactory(),
-        wrapper_class=structlog.stdlib.BoundLogger,
-        cache_logger_on_first_use=True,
-    )
-
-    # Get the root logger and configure it to use structlog
-    root_logger = logging.getLogger()
-
-    # Remove any existing handlers to prevent duplicate logging
-    for handler in root_logger.handlers:
-        root_logger.removeHandler(handler)
-
-    # Add a handler that will process logs through the structlog pipeline
-    handler = logging.StreamHandler(sys.stdout)
-    # The formatter is not needed because structlog's processor chain handles rendering.
-    root_logger.addHandler(handler)
-    root_logger.setLevel(log_level)
-
-    # Optionally silence noisy loggers from third-party libraries
-    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
-    logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
+    # Configure the standard logging library to use structlog's processors.
+    # This is the key part to make sure everything is integrated.
+    logging.config.dictConfig({
+        "version": 1,
+        "disable_existing_loggers": False, # Keep existing loggers
+        "formatters": {
+            "default": {
+                "()": structlog.stdlib.ProcessorFormatter,
+                "processors": processors,
+                "foreign_pre_chain": [structlog.stdlib.add_log_level],
+            },
+        },
+        "handlers": {
+            "default": {
+                "level": log_level_name,
+                "class": "logging.StreamHandler",
+                "formatter": "default",
+            },
+        },
+        "loggers": {
+            "": { # Root logger
+                "handlers": ["default"],
+                "level": log_level_name,
+                "propagate": True,
+            },
+        }
+    })
