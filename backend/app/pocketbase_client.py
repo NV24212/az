@@ -5,7 +5,6 @@ FastAPI's dependency injection system.
 from pocketbase import PocketBase
 from typing import Optional, Dict, Any
 import structlog
-from .errors import handle_pocketbase_error
 
 logger = structlog.get_logger(__name__)
 
@@ -21,12 +20,9 @@ class PocketBaseClient:
         """
         Get all records from a collection (auto-paginated).
         """
-        try:
-            records = await self.client.collection(collection).get_full_list(params or {})
-            logger.info("Full list retrieved", collection=collection, count=len(records))
-            return records
-        except Exception as e:
-            handle_pocketbase_error(e)
+        records = await self.client.collection(collection).get_full_list(params or {})
+        logger.info("Full list retrieved", collection=collection, count=len(records))
+        return records
 
     async def get_list(
         self,
@@ -38,25 +34,9 @@ class PocketBaseClient:
         """
         Get a paginated list of records from a collection.
         """
-        try:
-            records = await self.client.collection(collection).get_list(page, per_page, params or {})
-            return records
-        except Exception as e:
-            handle_pocketbase_error(e)
+        records = await self.client.collection(collection).get_list(page, per_page, params or {})
+        return records
 
-    async def health_check(self) -> bool:
-        """
-        Pings the PocketBase health endpoint.
-
-        Returns:
-            bool: True if the PocketBase instance is responsive and healthy.
-        """
-        try:
-            response = await self.client.health.check()
-            return response.get("code") == 200
-        except Exception as e:
-            logger.error("PocketBase health check failed", error=str(e))
-            return False
     async def get_record(
         self,
         collection: str,
@@ -74,7 +54,40 @@ class PocketBaseClient:
             if "404" in str(e):
                 logger.warn("Record not found", collection=collection, record_id=record_id)
                 return None
-            handle_pocketbase_error(e)
+            raise e
+
+    async def create_record(
+        self,
+        collection: str,
+        data: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        Create a new record.
+        """
+        record = await self.client.collection(collection).create(data)
+        logger.info("Record created", collection=collection, record_id=record.get('id'))
+        return record
+
+    async def update_record(
+        self,
+        collection: str,
+        record_id: str,
+        data: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        Update a record by ID.
+        """
+        record = await self.client.collection(collection).update(record_id, data)
+        logger.info("Record updated", collection=collection, record_id=record_id)
+        return record
+
+    async def delete_record(self, collection: str, record_id: str) -> bool:
+        """
+        Delete a record by ID.
+        """
+        await self.client.collection(collection).delete(record_id)
+        logger.info("Record deleted", collection=collection, record_id=record_id)
+        return True
 
     async def health_check(self) -> bool:
         """
@@ -88,47 +101,4 @@ class PocketBaseClient:
             return response.get("code") == 200
         except Exception as e:
             logger.error("PocketBase health check failed", error=str(e))
-            return False
-
-    async def create_record(
-        self,
-        collection: str,
-        data: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        """
-        Create a new record.
-        """
-        try:
-            record = await self.client.collection(collection).create(data)
-            logger.info("Record created", collection=collection, record_id=record.get('id'))
-            return record
-        except Exception as e:
-            handle_pocketbase_error(e)
-
-    async def update_record(
-        self,
-        collection: str,
-        record_id: str,
-        data: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        """
-        Update a record by ID.
-        """
-        try:
-            record = await self.client.collection(collection).update(record_id, data)
-            logger.info("Record updated", collection=collection, record_id=record_id)
-            return record
-        except Exception as e:
-            handle_pocketbase_error(e)
-
-    async def delete_record(self, collection: str, record_id: str) -> bool:
-        """
-        Delete a record by ID.
-        """
-        try:
-            await self.client.collection(collection).delete(record_id)
-            logger.info("Record deleted", collection=collection, record_id=record_id)
-            return True
-        except Exception as e:
-            handle_pocketbase_error(e)
             return False
