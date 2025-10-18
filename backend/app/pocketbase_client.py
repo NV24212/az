@@ -8,6 +8,7 @@ import structlog
 # Import necessary error classes and handler function
 import httpx
 from.errors import handle_pocketbase_error
+from pocketbase.models.errors import PocketBaseBadRequestError, PocketBaseError
 
 logger = structlog.get_logger(__name__)
 
@@ -144,13 +145,15 @@ class PocketBaseClient:
             await self.client.collections.create(schema)
             logger.info("Collection created successfully", collection_name=schema.get("name"))
         except Exception as e:
-            # This logic is correct for startup, but needs the handler import fixed
-            if isinstance(e, httpx.HTTPStatusError):
-                error_detail = e.response.json().get("message", "")
+            # FIX 1: Explicitly handle the expected "already exists" error during startup.
+            if isinstance(e, PocketBaseBadRequestError):
+                error_detail = e.data.get("message", "") # Use e.data to access the JSON error structure
+                # Check for the PocketBase internal error message
                 if "name must be unique" in error_detail.lower():
                     logger.warn("Collection already exists, skipping creation.", collection_name=schema.get("name"))
-                    return # Exit cleanly on expected error
+                    return # SUCCESS: Exit cleanly without raising an exception
 
-            # If it's a critical error (like a bad schema definition), raise the translated error
+            # FIX 2: For any other unhandled error (like a bad schema definition),
+            # fall back to the generic PocketBase error handler.
             from.errors import handle_pocketbase_error
             handle_pocketbase_error(e)
