@@ -4,6 +4,7 @@ from . import services, schemas
 from .config import settings
 from .pocketbase_client import pb_client
 import httpx
+from pocketbase.models.errors import PocketBaseNotFoundError
 
 # Main router for the API
 router = APIRouter(prefix="/api")
@@ -51,12 +52,24 @@ async def status_check():
 @router.get("/products", response_model=List[schemas.Product])
 async def list_products():
     """Retrieves a list of all products from PocketBase."""
-    return await services.get_products()
+    try:
+        return await services.get_products()
+    except PocketBaseNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Database error: The 'products' collection is missing or inaccessible. Check PocketBase server configuration. Error: {e.data.get('message', 'Unknown PB Error')}"
+        )
 
 @router.get("/categories", response_model=List[schemas.Category])
 async def list_categories():
     """Retrieves a list of all product categories from PocketBase."""
-    return await services.get_categories()
+    try:
+        return await services.get_categories()
+    except PocketBaseNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Database error: The 'categories' collection is missing or inaccessible. Check PocketBase server configuration. Error: {e.data.get('message', 'Unknown PB Error')}"
+        )
 
 # --- Admin Endpoints ---
 @admin_router.get("/status")

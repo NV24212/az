@@ -51,6 +51,22 @@ class PocketBaseClient:
                 logger.error("An unexpected error occurred during admin authentication.", error=str(e))
                 raise
 
+    async def health_check(self) -> bool:
+        """
+        Pings the PocketBase health endpoint.
+
+        Returns:
+            bool: True if the PocketBase instance is responsive and healthy.
+        """
+        try:
+            # PocketBase has a dedicated health check endpoint: /api/health
+            # The python-pocketbase client provides a direct method for this.
+            response = await self.client.health.check()
+            return response.get("code") == 200
+        except Exception as e:
+            logger.error("PocketBase health check failed", error=str(e))
+            return False
+
     async def authenticate_user(
         self,
         collection: str,
