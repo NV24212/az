@@ -4,6 +4,7 @@ from fastapi import HTTPException
 import httpx
 import structlog
 import traceback
+import sys
 
 logger = structlog.get_logger(__name__)
 

@@ -5,6 +5,9 @@ FastAPI's dependency injection system.
 from pocketbase import PocketBase
 from typing import Optional, Dict, Any
 import structlog
+# Import necessary error classes and handler function
+import httpx
+from.errors import handle_pocketbase_error
 
 logger = structlog.get_logger(__name__)
 
@@ -20,9 +23,13 @@ class PocketBaseClient:
         """
         Get all records from a collection (auto-paginated).
         """
-        records = await self.client.collection(collection).get_full_list(query_params=params or {})
-        logger.info("Full list retrieved", collection=collection, count=len(records))
-        return records
+        try:
+            records = await self.client.collection(collection).get_full_list(query_params=params or {})
+            logger.info("Full list retrieved", collection=collection, count=len(records))
+            return records
+        except Exception as e:
+            # FIX: Catch all exceptions and translate them immediately
+            handle_pocketbase_error(e)
 
     async def get_list(
         self,
@@ -34,8 +41,13 @@ class PocketBaseClient:
         """
         Get a paginated list of records from a collection.
         """
-        records = await self.client.collection(collection).get_list(page, per_page, query_params=params or {})
-        return records
+        try:
+            records = await self.client.collection(collection).get_list(page, per_page, query_params=params or {})
+            return records
+        except Exception as e:
+            # FIX: Catch all exceptions and translate them immediately
+            handle_pocketbase_error(e)
+
 
     async def get_record(
         self,
@@ -49,12 +61,18 @@ class PocketBaseClient:
         try:
             record = await self.client.collection(collection).get_one(record_id, params or {})
             return record
-        except Exception as e:
-            # A 404 for a single record should return None, not raise an error
-            if "404" in str(e):
+        except httpx.HTTPStatusError as e:
+            # FIX: Use explicit httpx exception handling
+            if e.response.status_code == 404:
                 logger.warn("Record not found", collection=collection, record_id=record_id)
                 return None
-            raise e
+
+            # If it's another error (400, 403, 500), translate it
+            handle_pocketbase_error(e)
+        except Exception as e:
+            # Catch other unexpected errors and re-raise after translation attempt
+            handle_pocketbase_error(e)
+
 
     async def create_record(
         self,
@@ -64,9 +82,14 @@ class PocketBaseClient:
         """
         Create a new record.
         """
-        record = await self.client.collection(collection).create(data)
-        logger.info("Record created", collection=collection, record_id=record.get('id'))
-        return record
+        try:
+            record = await self.client.collection(collection).create(data)
+            logger.info("Record created", collection=collection, record_id=record.get('id'))
+            return record
+        except Exception as e:
+            # FIX: Catch all exceptions and translate them immediately
+            handle_pocketbase_error(e)
+
 
     async def update_record(
         self,
@@ -77,17 +100,26 @@ class PocketBaseClient:
         """
         Update a record by ID.
         """
-        record = await self.client.collection(collection).update(record_id, data)
-        logger.info("Record updated", collection=collection, record_id=record_id)
-        return record
+        try:
+            record = await self.client.collection(collection).update(record_id, data)
+            logger.info("Record updated", collection=collection, record_id=record_id)
+            return record
+        except Exception as e:
+            # FIX: Catch all exceptions and translate them immediately
+            handle_pocketbase_error(e)
+
 
     async def delete_record(self, collection: str, record_id: str) -> bool:
         """
         Delete a record by ID.
         """
-        await self.client.collection(collection).delete(record_id)
-        logger.info("Record deleted", collection=collection, record_id=record_id)
-        return True
+        try:
+            await self.client.collection(collection).delete(record_id)
+            logger.info("Record deleted", collection=collection, record_id=record_id)
+            return True
+        except Exception as e:
+            # FIX: Catch all exceptions and translate them immediately
+            handle_pocketbase_error(e)
 
     async def health_check(self) -> bool:
         """
@@ -96,6 +128,7 @@ class PocketBaseClient:
         Returns:
             bool: True if the PocketBase instance is responsive and healthy.
         """
+        # (No change here, as health checks are typically handled separately)
         try:
             response = await self.client.health.check()
             return response.get("code") == 200
@@ -111,10 +144,13 @@ class PocketBaseClient:
             await self.client.collections.create(schema)
             logger.info("Collection created successfully", collection_name=schema.get("name"))
         except Exception as e:
-            # If the collection already exists, PocketBase returns a 400 with a specific message.
-            # We can safely ignore this error during the startup routine.
-            if "name must be unique" in str(e).lower():
-                logger.warn("Collection already exists, skipping creation.", collection_name=schema.get("name"))
-            else:
-                from .errors import handle_pocketbase_error
-                handle_pocketbase_error(e)
+            # This logic is correct for startup, but needs the handler import fixed
+            if isinstance(e, httpx.HTTPStatusError):
+                error_detail = e.response.json().get("message", "")
+                if "name must be unique" in error_detail.lower():
+                    logger.warn("Collection already exists, skipping creation.", collection_name=schema.get("name"))
+                    return # Exit cleanly on expected error
+
+            # If it's a critical error (like a bad schema definition), raise the translated error
+            from.errors import handle_pocketbase_error
+            handle_pocketbase_error(e)

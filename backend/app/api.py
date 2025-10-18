@@ -3,8 +3,6 @@ from typing import List
 from . import services, schemas
 from .dependencies import PBAdminClient
 import httpx
-from pocketbase.models.errors import PocketBaseNotFoundError
-
 # Main router for the API
 router = APIRouter(prefix="/api")
 
@@ -45,24 +43,12 @@ async def status_check():
 @router.get("/products", response_model=List[schemas.Product])
 async def list_products(pb_client: PBAdminClient):
     """Retrieves a list of all products from PocketBase."""
-    try:
-        return await services.get_products(pb_client)
-    except PocketBaseNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database error: The 'products' collection is missing or inaccessible."
-        )
+    return await services.get_products(pb_client)
 
 @router.get("/categories", response_model=List[schemas.Category])
 async def list_categories(pb_client: PBAdminClient):
     """Retrierieves a list of all product categories from PocketBase."""
-    try:
-        return await services.get_categories(pb_client)
-    except PocketBaseNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database error: The 'categories' collection is missing or inaccessible."
-        )
+    return await services.get_categories(pb_client)
 
 # --- Admin Endpoints ---
 @admin_router.get("/status")
