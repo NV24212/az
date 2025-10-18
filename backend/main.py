@@ -5,11 +5,15 @@ from app.config import settings
 from app.logging_config import setup_logging
 from app.dependencies import get_pocketbase_admin_client
 from app.collection_schemas import PRODUCTS_SCHEMA, CATEGORIES_SCHEMA
+from app.errors import global_exception_handler
 import asyncio
 
 setup_logging()
 
 app = FastAPI(title="AzharStore API", version="0.1.0")
+
+# Register the global exception handler
+app.add_exception_handler(Exception, global_exception_handler)
 
 @app.on_event("startup")
 async def ensure_collections_exist():
