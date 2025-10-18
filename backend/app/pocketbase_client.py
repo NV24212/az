@@ -20,7 +20,7 @@ class PocketBaseClient:
         """
         Get all records from a collection (auto-paginated).
         """
-        records = await self.client.collection(collection).get_full_list(list_options=params or {})
+        records = await self.client.collection(collection).get_full_list(query_params=params or {})
         logger.info("Full list retrieved", collection=collection, count=len(records))
         return records
 
@@ -34,7 +34,7 @@ class PocketBaseClient:
         """
         Get a paginated list of records from a collection.
         """
-        records = await self.client.collection(collection).get_list(page, per_page, list_options=params or {})
+        records = await self.client.collection(collection).get_list(page, per_page, query_params=params or {})
         return records
 
     async def get_record(
