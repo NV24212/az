@@ -49,7 +49,7 @@ async def delete_product(pb_client: PocketBaseClient, product_id: str):
     return await pb_client.delete_record("products", product_id)
 
 async def get_categories(pb_client: PocketBaseClient):
-    return await pb_client.get_full_list("categories", {"sort": "name"})
+    return await pb_client.get_full_list("categories")
 
 async def create_category(pb_client: PocketBaseClient, category_data: dict):
     return await pb_client.create_record("categories", category_data)

@@ -1,4 +1,5 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
+from typing import Dict, Any
 
 # --- Pydantic Models for Authentication ---
 class AdminLoginRequest(BaseModel):
@@ -23,6 +24,16 @@ class Category(CategoryBase):
     id: str
     collectionId: str
     collectionName: str
+    category: Category | None = None
+
+    @model_validator(mode='before')
+    def move_expand_to_category(cls, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Move the 'expand' data from PocketBase into the 'category' field.
+        """
+        if 'expand' in data and 'categoryId' in data['expand']:
+            data['category'] = data['expand']['categoryId']
+        return data
 
 class ProductBase(BaseModel):
     name: str
