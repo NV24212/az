@@ -145,15 +145,18 @@ class PocketBaseClient:
             await self.client.collections.create(schema)
             logger.info("Collection created successfully", collection_name=schema.get("name"))
         except Exception as e:
-            # FIX 1: Explicitly handle the expected "already exists" error during startup.
-            if isinstance(e, PocketBaseBadRequestError):
-                error_detail = e.data.get("message", "") # Use e.data to access the JSON error structure
-                # Check for the PocketBase internal error message
-                if "name must be unique" in error_detail.lower():
-                    logger.warn("Collection already exists, skipping creation.", collection_name=schema.get("name"))
-                    return # SUCCESS: Exit cleanly without raising an exception
+            # FIX: Only call the error handler for unexpected, critical faults.
 
-            # FIX 2: For any other unhandled error (like a bad schema definition),
-            # fall back to the generic PocketBase error handler.
+            # 1. Check for the specific "Collection already exists" error object
+            if isinstance(e, PocketBaseBadRequestError):
+
+                # The detailed error code confirms the collection name clash
+                name_error_data = e.data.get('data', {}).get('name', {})
+                if name_error_data.get('code') == 'validation_collection_name_exists':
+                    logger.warn("Collection already exists, skipping creation.", collection_name=schema.get("name"))
+                    return # <-- EXIT CLEANLY HERE. DO NOT CALL handle_pocketbase_error.
+
+            # 2. If it is any other error (e.g., connection fail, bad schema field),
+            # we want to treat it as a critical fault during startup.
             from.errors import handle_pocketbase_error
             handle_pocketbase_error(e)
