@@ -1,12 +1,8 @@
----
-title: Backend Code
----
-
-# Backend Code
+# Backend Source Code
 
 ## `backend/main.py`
 
-```
+```python
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import router as api_router, admin_router
@@ -15,6 +11,7 @@ from app.logging_config import setup_logging
 from app.dependencies import get_pocketbase_admin_client
 from app.collection_schemas import PRODUCTS_SCHEMA, CATEGORIES_SCHEMA
 from app.errors import global_exception_handler
+from app.seeding import seed_database
 import asyncio
 
 setup_logging()
@@ -35,9 +32,12 @@ async def ensure_collections_exist():
 
     await pb_client.create_collection(CATEGORIES_SCHEMA)
     await pb_client.create_collection(PRODUCTS_SCHEMA)
+    await seed_database(pb_client)
 
 # Determine the allowed origins for CORS based on the settings.
-if settings.CORS_ORIGINS == "*":
+# For local development and debugging, it's often useful to allow all origins.
+# In a production environment, this should be a comma-separated list of specific domains.
+if not settings.CORS_ORIGINS or settings.CORS_ORIGINS == "*":
     allow_origins = ["*"]
 else:
     allow_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",")]
@@ -66,11 +66,12 @@ async def health_head():
     return None
 
 app.include_router(api_router)
-app.include_router(admin_router)```
+app.include_router(admin_router)
+```
 
 ## `backend/app/api.py`
 
-```
+```python
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 from . import services, schemas
@@ -170,155 +171,106 @@ async def delete_category(category_id: str, pb_client: PBAdminClient):
     success = await services.delete_category(pb_client, category_id)
     if not success:
         raise HTTPException(status_code=404, detail="Category not found")
-    return None```
-
-## `backend/app/services.py`
-
+    return None
 ```
-from jose import jwt
-from datetime import datetime, timedelta, timezone
-from .config import settings
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-from .pocketbase_client import PocketBaseClient
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
+## `backend/app/collection_schemas.py`
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-    return encoded_jwt
+```python
+CATEGORIES_SCHEMA = {
+    "name": "categories",
+    "type": "base",
+    "listRule": "",
+    "viewRule": "",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "@request.auth.id != ''",
+    "deleteRule": "@request.auth.id != ''", # Changed from None
+    "schema": [
+        {
+            "name": "name",
+            "type": "text",
+            "required": True,
+            "unique": True,
+        }
+    ]
+}
 
-async def get_current_admin_user(token: str = Depends(oauth2_scheme)):
-    """
-    Dependency to validate the JWT token and return the user's email.
-    Raises HTTPException 401 if the token is invalid.
-    """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        email: str | None = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-        return {"email": email}
-    except jwt.JWTError:
-        raise credentials_exception
-
-async def get_products(pb_client: PocketBaseClient):
-    return await pb_client.get_full_list("products", params={"expand": "categoryId"})
-
-async def create_product(pb_client: PocketBaseClient, product_data: dict):
-    return await pb_client.create_record("products", product_data)
-
-async def update_product(pb_client: PocketBaseClient, product_id: str, product_data: dict):
-    return await pb_client.update_record("products", product_id, product_data)
-
-async def delete_product(pb_client: PocketBaseClient, product_id: str):
-    return await pb_client.delete_record("products", product_id)
-
-async def get_categories(pb_client: PocketBaseClient):
-    return await pb_client.get_full_list("categories")
-
-async def create_category(pb_client: PocketBaseClient, category_data: dict):
-    return await pb_client.create_record("categories", category_data)
-
-async def update_category(pb_client: PocketBaseClient, category_id: str, category_data: dict):
-    return await pb_client.update_record("categories", category_id, category_data)
-
-async def delete_category(pb_client: PocketBaseClient, category_id: str):
-    return await pb_client.delete_record("categories", category_id)```
-
-## `backend/app/schemas.py`
-
+PRODUCTS_SCHEMA = {
+    "name": "products",
+    "type": "base",
+    "listRule": "",
+    "viewRule": "",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "@request.auth.id != ''",
+    "deleteRule": "@request.auth.id != ''", # Changed from None
+    "schema": [
+        {
+            "name": "name",
+            "type": "text",
+            "required": True,
+        },
+        {
+            "name": "description",
+            "type": "text",
+        },
+        {
+            "name": "price",
+            "type": "number",
+            "required": True,
+        },
+        {
+            "name": "stockQuantity",
+            "type": "number",
+            "required": True,
+        },
+        {
+            "name": "imageUrl",
+            "type": "text",
+        },
+        {
+            "name": "categoryId",
+            "type": "relation",
+            "required": True,
+            "options": {
+                "collectionId": "categories",
+                "cascadeDelete": False,
+                "maxSelect": 1,
+            }
+        }
+    ]
+}
 ```
-from __future__ import annotations
-from pydantic import BaseModel, model_validator, ConfigDict # <-- IMPORT ConfigDict
-from typing import Dict, Any, Optional
 
-# --- Schemas for PocketBase Records ---
+## `backend/app/config.py`
 
-# Add configuration to handle PocketBase system fields (like created, updated)
-# and allow flexible attribute assignment.
-class PBDictBase(BaseModel):
-    # This configuration tells Pydantic to allow extra fields that don't match
-    # the schema to pass through (but they won't be serialized in the response)
-    # and to allow assignment from attributes (dictionaries).
-    model_config = ConfigDict(extra='ignore', from_attributes=True)
+```python
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-class CategoryBase(PBDictBase): # <-- Inherit from the new PBDictBase
-    name: str
+class Settings(BaseSettings):
+    # Load settings from a .env file.
+    # The `extra='ignore'` option prevents errors if there are
+    # extra environment variables not defined in this model.
+    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')
 
-class CategoryCreate(CategoryBase):
-    pass
+    CORS_ORIGINS: str = "*"
 
-class CategoryUpdate(BaseModel):
-    name: str | None = None
+    # PocketBase settings
+    POCKETBASE_URL: str
+    POCKETBASE_ADMIN_EMAIL: str
+    POCKETBASE_ADMIN_PASSWORD: str
 
-class Category(CategoryBase):
-    id: str
-    collectionId: str
-    collectionName: str
+    # JWT settings
+    SECRET_KEY: str
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-class ProductBase(PBDictBase): # <-- Inherit from the new PBDictBase
-    name: str
-    description: str | None = None
-    price: float # <-- Pydantic will now try harder to coerce the input to float
-    stockQuantity: int # <-- Pydantic will now try harder to coerce the input to int
-    imageUrl: str | None = None
-
-class ProductCreate(ProductBase):
-    categoryId: str
-
-class ProductUpdate(BaseModel):
-    name: str | None = None
-    description: str | None = None
-    price: float | None = None
-    stockQuantity: int | None = None
-    imageUrl: str | None = None
-    categoryId: str | None = None
-
-class Product(ProductBase):
-    id: str
-    collectionId: str
-    collectionName: str
-    categoryId: str
-    category: Optional[Category] = None
-
-    @model_validator(mode='before')
-    @classmethod
-    def move_expand_to_category(cls, data: Dict[str, Any]) -> Dict[str, Any]:
-        # Safely extract expand data
-        expand_data = data.pop('expand', {})
-
-        if expand_data and isinstance(expand_data, dict):
-            # The key is the relation field name ('categoryId').
-            expanded_category_data = expand_data.get('categoryId')
-
-            if expanded_category_data:
-                # If PocketBase returns a list for a maxSelect=1 field, use the first item.
-                if isinstance(expanded_category_data, list):
-                    data['category'] = expanded_category_data[0] if expanded_category_data else None
-                else:
-                    # If it's a dict (the actual Category record)
-                    data['category'] = expanded_category_data
-
-        return data
-
-Product.model_rebuild()
+# Create a single, reusable instance of the settings
+settings = Settings()
 ```
 
 ## `backend/app/dependencies.py`
 
-```
+```python
 from fastapi import Depends, HTTPException, status
 from pocketbase import PocketBase
 import httpx
@@ -348,178 +300,12 @@ async def get_pocketbase_admin_client() -> PocketBaseClient:
             detail=f"An unexpected error occurred with the database service: {str(e)}"
         )
 
-PBAdminClient = Annotated[PocketBaseClient, Depends(get_pocketbase_admin_client)]```
-
-## `backend/app/pocketbase_client.py`
-
-```
-"""
-A stateless, refactored PocketBase client designed for use with
-FastAPI's dependency injection system.
-"""
-from pocketbase import PocketBase
-from typing import Optional, Dict, Any
-import structlog
-# Import necessary error classes and handler function
-import httpx
-from.errors import handle_pocketbase_error
-from pocketbase.models.errors import PocketBaseBadRequestError, PocketBaseError
-
-logger = structlog.get_logger(__name__)
-
-class PocketBaseClient:
-    def __init__(self, client: PocketBase):
-        self.client = client
-
-    async def get_full_list(
-        self,
-        collection: str,
-        params: Optional[Dict[str, Any]] = None,
-    ) -> list:
-        """
-        Get all records from a collection (auto-paginated).
-        """
-        try:
-            records = await self.client.collection(collection).get_full_list(**(params or {}))
-            logger.info("Full list retrieved", collection=collection, count=len(records))
-            return records
-        except Exception as e:
-            # FIX: Catch all exceptions and translate them immediately
-            handle_pocketbase_error(e)
-
-    async def get_list(
-        self,
-        collection: str,
-        page: int = 1,
-        per_page: int = 30,
-        params: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
-        """
-        Get a paginated list of records from a collection.
-        """
-        try:
-            records = await self.client.collection(collection).get_list(page, per_page, **(params or {}))
-            return records
-        except Exception as e:
-            # FIX: Catch all exceptions and translate them immediately
-            handle_pocketbase_error(e)
-
-
-    async def get_record(
-        self,
-        collection: str,
-        record_id: str,
-        params: Optional[Dict[str, Any]] = None,
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Get a single record by ID. Returns None if not found.
-        """
-        try:
-            record = await self.client.collection(collection).get_one(record_id, params or {})
-            return record
-        except httpx.HTTPStatusError as e:
-            # FIX: Use explicit httpx exception handling
-            if e.response.status_code == 404:
-                logger.warn("Record not found", collection=collection, record_id=record_id)
-                return None
-
-            # If it's another error (400, 403, 500), translate it
-            handle_pocketbase_error(e)
-        except Exception as e:
-            # Catch other unexpected errors and re-raise after translation attempt
-            handle_pocketbase_error(e)
-
-
-    async def create_record(
-        self,
-        collection: str,
-        data: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        """
-        Create a new record.
-        """
-        try:
-            record = await self.client.collection(collection).create(data)
-            logger.info("Record created", collection=collection, record_id=record.get('id'))
-            return record
-        except Exception as e:
-            # FIX: Catch all exceptions and translate them immediately
-            handle_pocketbase_error(e)
-
-
-    async def update_record(
-        self,
-        collection: str,
-        record_id: str,
-        data: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        """
-        Update a record by ID.
-        """
-        try:
-            record = await self.client.collection(collection).update(record_id, data)
-            logger.info("Record updated", collection=collection, record_id=record_id)
-            return record
-        except Exception as e:
-            # FIX: Catch all exceptions and translate them immediately
-            handle_pocketbase_error(e)
-
-
-    async def delete_record(self, collection: str, record_id: str) -> bool:
-        """
-        Delete a record by ID.
-        """
-        try:
-            await self.client.collection(collection).delete(record_id)
-            logger.info("Record deleted", collection=collection, record_id=record_id)
-            return True
-        except Exception as e:
-            # FIX: Catch all exceptions and translate them immediately
-            handle_pocketbase_error(e)
-
-    async def health_check(self) -> bool:
-        """
-        Pings the PocketBase health endpoint.
-
-        Returns:
-            bool: True if the PocketBase instance is responsive and healthy.
-        """
-        # (No change here, as health checks are typically handled separately)
-        try:
-            response = await self.client.health.check()
-            return response.get("code") == 200
-        except Exception as e:
-            logger.error("PocketBase health check failed", error=str(e))
-            return False
-
-    async def create_collection(self, schema: Dict[str, Any]):
-        """
-        Creates a new collection from a schema.
-        """
-        try:
-            await self.client.collections.create(schema)
-            logger.info("Collection created successfully", collection_name=schema.get("name"))
-        except Exception as e:
-            # FIX: Only call the error handler for unexpected, critical faults.
-
-            # 1. Check for the specific "Collection already exists" error object
-            if isinstance(e, PocketBaseBadRequestError):
-
-                # The detailed error code confirms the collection name clash
-                name_error_data = e.data.get('data', {}).get('name', {})
-                if name_error_data.get('code') == 'validation_collection_name_exists':
-                    logger.warn("Collection already exists, skipping creation.", collection_name=schema.get("name"))
-                    return # <-- EXIT CLEANLY HERE. DO NOT CALL handle_pocketbase_error.
-
-            # 2. If it is any other error (e.g., connection fail, bad schema field),
-            # we want to treat it as a critical fault during startup.
-            from.errors import handle_pocketbase_error
-            handle_pocketbase_error(e)
+PBAdminClient = Annotated[PocketBaseClient, Depends(get_pocketbase_admin_client)]
 ```
 
 ## `backend/app/errors.py`
 
-```
+```python
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from fastapi import HTTPException
@@ -608,102 +394,9 @@ def handle_pocketbase_error(e: Exception):
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unknown Database Error: {detail}")
 ```
 
-## `backend/app/collection_schemas.py`
-
-```
-CATEGORIES_SCHEMA = {
-    "name": "categories",
-    "type": "base",
-    "listRule": "",
-    "viewRule": "",
-    "createRule": "@request.auth.id != ''",
-    "updateRule": "@request.auth.id != ''",
-    "deleteRule": None,
-    "schema": [
-        {
-            "name": "name",
-            "type": "text",
-            "required": True,
-            "unique": True,
-        }
-    ]
-}
-
-PRODUCTS_SCHEMA = {
-    "name": "products",
-    "type": "base",
-    "listRule": "",
-    "viewRule": "",
-    "createRule": "@request.auth.id != ''",
-    "updateRule": "@request.auth.id != ''",
-    "deleteRule": None,
-    "schema": [
-        {
-            "name": "name",
-            "type": "text",
-            "required": True,
-        },
-        {
-            "name": "description",
-            "type": "text",
-        },
-        {
-            "name": "price",
-            "type": "number",
-            "required": True,
-        },
-        {
-            "name": "stockQuantity",
-            "type": "number",
-            "required": True,
-        },
-        {
-            "name": "imageUrl",
-            "type": "text",
-        },
-        {
-            "name": "categoryId",
-            "type": "relation",
-            "required": True,
-            "options": {
-                "collectionId": "categories",
-                "cascadeDelete": False,
-                "maxSelect": 1,
-            }
-        }
-    ]
-}```
-
-## `backend/app/config.py`
-
-```
-from pydantic_settings import BaseSettings, SettingsConfigDict
-
-class Settings(BaseSettings):
-    # Load settings from a .env file.
-    # The `extra='ignore'` option prevents errors if there are
-    # extra environment variables not defined in this model.
-    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')
-
-    CORS_ORIGINS: str = "*"
-
-    # PocketBase settings
-    POCKETBASE_URL: str
-    POCKETBASE_ADMIN_EMAIL: str
-    POCKETBASE_ADMIN_PASSWORD: str
-
-    # JWT settings
-    SECRET_KEY: str
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-
-# Create a single, reusable instance of the settings
-settings = Settings()
-```
-
 ## `backend/app/logging_config.py`
 
-```
+```python
 import logging
 import logging.config
 import sys
@@ -771,54 +464,383 @@ def setup_logging():
     print("--- LOGGING HAS BEEN DEFINITIVELY CONFIGURED ---")
 ```
 
-## `backend/app/__init__.py`
+## `backend/app/pocketbase_client.py`
 
+```python
+"""
+A stateless, refactored PocketBase client designed for use with
+FastAPI's dependency injection system.
+"""
+from pocketbase import PocketBase
+from typing import Optional, Dict, Any
+import structlog
+# Import necessary error classes and handler function
+import httpx
+from.errors import handle_pocketbase_error
+from pocketbase.models.errors import PocketBaseBadRequestError, PocketBaseError
+
+logger = structlog.get_logger(__name__)
+
+class PocketBaseClient:
+    def __init__(self, client: PocketBase):
+        self.client = client
+
+    async def get_full_list(
+        self,
+        collection: str,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> list:
+        """
+        Get all records from a collection (auto-paginated).
+        """
+        try:
+            records = await self.client.collection(collection).get_full_list(**(params or {}))
+            logger.info("Full list retrieved", collection=collection, count=len(records))
+            return records
+        except Exception as e:
+            handle_pocketbase_error(e)
+
+    async def get_list(
+        self,
+        collection: str,
+        page: int = 1,
+        per_page: int = 30,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Get a paginated list of records from a collection.
+        """
+        try:
+            records = await self.client.collection(collection).get_list(page, per_page, **(params or {}))
+            return records
+        except Exception as e:
+            handle_pocketbase_error(e)
+
+
+    async def get_record(
+        self,
+        collection: str,
+        record_id: str,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get a single record by ID. Returns None if not found.
+        """
+        try:
+            record = await self.client.collection(collection).get_one(record_id, **(params or {}))
+            return record
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.warn("Record not found", collection=collection, record_id=record_id)
+                return None
+            handle_pocketbase_error(e)
+        except Exception as e:
+            handle_pocketbase_error(e)
+
+
+    async def create_record(
+        self,
+        collection: str,
+        data: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        Create a new record.
+        """
+        try:
+            record = await self.client.collection(collection).create(data)
+            logger.info("Record created", collection=collection, record_id=record.get('id'))
+            return record
+        except Exception as e:
+            handle_pocketbase_error(e)
+
+
+    async def update_record(
+        self,
+        collection: str,
+        record_id: str,
+        data: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        Update a record by ID.
+        """
+        try:
+            record = await self.client.collection(collection).update(record_id, data)
+            logger.info("Record updated", collection=collection, record_id=record_id)
+            return record
+        except Exception as e:
+            handle_pocketbase_error(e)
+
+
+    async def delete_record(self, collection: str, record_id: str) -> bool:
+        """
+        Delete a record by ID.
+        """
+        try:
+            await self.client.collection(collection).delete(record_id)
+            logger.info("Record deleted", collection=collection, record_id=record_id)
+            return True
+        except Exception as e:
+            handle_pocketbase_error(e)
+
+    async def health_check(self) -> bool:
+        """
+        Pings the PocketBase health endpoint.
+
+        Returns:
+            bool: True if the PocketBase instance is responsive and healthy.
+        """
+        try:
+            response = await self.client.health.check()
+            return response.get("code") == 200
+        except Exception as e:
+            logger.error("PocketBase health check failed", error=str(e))
+            return False
+
+    async def create_collection(self, schema: Dict[str, Any]):
+        """
+        Creates a new collection from a schema.
+        """
+        try:
+            await self.client.collections.create(schema)
+            logger.info("Collection created successfully", collection_name=schema.get("name"))
+        except Exception as e:
+            if isinstance(e, PocketBaseBadRequestError):
+                name_error_data = e.data.get('data', {}).get('name', {})
+                if name_error_data.get('code') == 'validation_collection_name_exists':
+                    logger.warn("Collection already exists, skipping creation.", collection_name=schema.get("name"))
+                    return
+            from.errors import handle_pocketbase_error
+            handle_pocketbase_error(e)
 ```
+
+## `backend/app/schemas.py`
+
+```python
+from __future__ import annotations
+from pydantic import BaseModel, model_validator, ConfigDict
+from typing import Dict, Any, Optional
+
+# --- Pydantic Models for Authentication ---
+class AdminLoginRequest(BaseModel):
+    email: str
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+# --- Schemas for PocketBase Records ---
+
+# Add configuration to handle PocketBase system fields (like created, updated)
+# and allow flexible attribute assignment.
+class PBDictBase(BaseModel):
+    model_config = ConfigDict(extra='ignore', from_attributes=True)
+
+class CategoryBase(PBDictBase):
+    name: str
+
+class CategoryCreate(CategoryBase):
+    pass
+
+class CategoryUpdate(BaseModel):
+    name: str | None = None
+
+class Category(CategoryBase):
+    id: str
+    collectionId: str
+    collectionName: str
+    created: str
+    updated: str
+
+class ProductBase(PBDictBase):
+    name: str
+    description: str | None = None
+    price: float
+    stockQuantity: int
+    imageUrl: str | None = None
+
+class ProductCreate(ProductBase):
+    categoryId: str
+
+class ProductUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    price: float | None = None
+    stockQuantity: int | None = None
+    imageUrl: str | None = None
+    categoryId: str | None = None
+
+class Product(ProductBase):
+    id: str
+    collectionId: str
+    collectionName: str
+    categoryId: Optional[str] = None
+    category: Optional[Category] = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def move_expand_to_category(cls, data: Dict[str, Any]) -> Dict[str, Any]:
+        # Safely extract expand data
+        expand_data = data.pop('expand', {}) # <--- Safe, defaults to empty dict
+
+        if expand_data and isinstance(expand_data, dict):
+            # The key is the relation field name ('categoryId').
+            # Get with .get() for safety
+            expanded_category_data = expand_data.get('categoryId') # <--- Use .get()
+
+            if expanded_category_data: # <--- Check if anything was actually found
+                if isinstance(expanded_category_data, list):
+                    # Should only happen for maxSelect > 1. If it's empty, use None.
+                    data['category'] = expanded_category_data[0] if expanded_category_data else None
+                else:
+                    # If it's a dict (the actual Category record)
+                    data['category'] = expanded_category_data
+            else:
+                # If 'categoryId' key was not in expand_data or its value was None/empty
+                data['category'] = None # Explicitly set to None if no expanded category
+        else:
+            # If there was no 'expand' key or it wasn't a dict
+            data['category'] = None # Explicitly set to None
+
+        return data
+
+Product.model_rebuild()
 ```
 
-## `backend/requirements.txt`
+## `backend/app/seeding.py`
 
+```python
+import structlog
+from app.pocketbase_client import PocketBaseClient
+
+logger = structlog.get_logger(__name__)
+
+async def seed_database(pb_client: PocketBaseClient):
+    """
+    Checks if the database is empty and, if so, populates it with
+    sample categories and products.
+    """
+    try:
+        # Check if categories are empty
+        existing_categories = await pb_client.get_full_list("categories")
+        if not existing_categories:
+            logger.info("No categories found. Seeding database with sample data...")
+
+            # Create sample categories
+            electronics = await pb_client.create_record("categories", {"name": "Electronics"})
+            clothing = await pb_client.create_record("categories", {"name": "Clothing"})
+            books = await pb_client.create_record("categories", {"name": "Books"})
+
+            # Create sample products
+            await pb_client.create_record("products", {
+                "name": "Laptop",
+                "description": "A powerful and portable laptop.",
+                "price": 1200.00,
+                "stockQuantity": 50,
+                "imageUrl": "https://example.com/laptop.jpg",
+                "categoryId": electronics['id']
+            })
+            await pb_client.create_record("products", {
+                "name": "T-Shirt",
+                "description": "A comfortable cotton t-shirt.",
+                "price": 25.00,
+                "stockQuantity": 200,
+                "imageUrl": "https://example.com/tshirt.jpg",
+                "categoryId": clothing['id']
+            })
+            await pb_client.create_record("products", {
+                "name": "Programming Book",
+                "description": "A book about programming.",
+                "price": 50.00,
+                "stockQuantity": 100,
+                "imageUrl": "https://example.com/book.jpg",
+                "categoryId": books['id']
+            })
+            logger.info("Database seeding complete.")
+        else:
+            logger.info("Database already contains data. Skipping seeding.")
+
+    except Exception as e:
+        logger.error("An error occurred during database seeding.", error=str(e))
 ```
-fastapi==0.114.2
-uvicorn[standard]==0.30.6
-pydantic==2.9.2
-pydantic-settings==2.5.2
-python-dotenv==1.0.1
-bcrypt==4.2.0
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
-structlog==24.4.0
-httpx==0.27.0
-pocketbase-async==0.12.0```
 
-## `backend/Dockerfile`
+## `backend/app/services.py`
 
+```python
+import structlog
+import traceback
+from jose import jwt
+from datetime import datetime, timedelta, timezone
+from .config import settings
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from .pocketbase_client import PocketBaseClient
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
+logger = structlog.get_logger(__name__)
+
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return encoded_jwt
+
+async def get_current_admin_user(token: str = Depends(oauth2_scheme)):
+    """
+    Dependency to validate the JWT token and return the user's email.
+    Raises HTTPException 401 if the token is invalid.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        email: str | None = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+        return {"email": email}
+    except jwt.JWTError:
+        raise credentials_exception
+
+async def get_products(pb_client: PocketBaseClient):
+    try:
+        raw_products = await pb_client.get_full_list("products", params={"expand": "categoryId"})
+        logger.info("Raw products retrieved from PocketBase", raw_data=raw_products)
+        return raw_products
+    except Exception as e:
+        logger.error("Error retrieving products in service layer", error=str(e), traceback=traceback.format_exc())
+        raise
+
+async def create_product(pb_client: PocketBaseClient, product_data: dict):
+    return await pb_client.create_record("products", product_data)
+
+async def update_product(pb_client: PocketBaseClient, product_id: str, product_data: dict):
+    return await pb_client.update_record("products", product_id, product_data)
+
+async def delete_product(pb_client: PocketBaseClient, product_id: str):
+    return await pb_client.delete_record("products", product_id)
+
+async def get_categories(pb_client: PocketBaseClient):
+    try:
+        raw_categories = await pb_client.get_full_list("categories")
+        logger.info("Raw categories retrieved from PocketBase", raw_data=raw_categories)
+        return raw_categories
+    except Exception as e:
+        logger.error("Error retrieving categories in service layer", error=str(e), traceback=traceback.format_exc())
+        raise
+
+async def create_category(pb_client: PocketBaseClient, category_data: dict):
+    return await pb_client.create_record("categories", category_data)
+
+async def update_category(pb_client: PocketBaseClient, category_id: str, category_data: dict):
+    return await pb_client.update_record("categories", category_id, category_data)
+
+async def delete_category(pb_client: PocketBaseClient, category_id: str):
+    return await pb_client.delete_record("categories", category_id)
 ```
-FROM python:3.11-slim
-WORKDIR /app
-
-COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . /app
-EXPOSE 8000
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]```
-
-## `backend/.env.example`
-
-```
-# --- PocketBase Configuration ---
-POCKETBASE_URL="https://your-pocketbase-instance.com"
-POCKETBASE_ADMIN_EMAIL="admin@example.com"
-POCKETBASE_ADMIN_PASSWORD="your-secure-password"
-
-# --- CORS Origins ---
-# Comma-separated list of allowed origins for frontend requests.
-# Use "*" for development to allow all origins.
-CORS_ORIGINS="*"
-
-# --- JWT Settings ---
-# A strong, secret key for signing JWTs.
-# You can generate a new one using: openssl rand -hex 32
-SECRET_KEY="your_super_secret_key_for_jwt"
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-ALGORITHM="HS256"```

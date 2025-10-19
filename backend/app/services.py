@@ -59,7 +59,7 @@ async def delete_product(pb_client: PocketBaseClient, product_id: str):
 
 async def get_categories(pb_client: PocketBaseClient):
     try:
-        raw_categories = await pb_client.get_full_list("categories")
+        raw_categories = await pb_client.get_full_list("categories", params={"fields": "*"})
         logger.info("Raw categories retrieved from PocketBase", raw_data=raw_categories)
         return raw_categories
     except Exception as e:
