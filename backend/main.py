@@ -9,12 +9,8 @@ setup_logging()
 
 app = FastAPI(title="AzharStore API", version="0.1.0")
 
-# Register the global exception handler
 app.add_exception_handler(Exception, global_exception_handler)
 
-# Determine the allowed origins for CORS based on the settings.
-# For local development and debugging, it's often useful to allow all origins.
-# In a production environment, this should be a comma-separated list of specific domains.
 if not settings.CORS_ORIGINS or settings.CORS_ORIGINS == "*":
     allow_origins = ["*"]
 else:
@@ -38,9 +34,6 @@ async def health():
 
 @app.head("/health", status_code=200)
 async def health_head():
-    """
-    Responds to HEAD requests for health checks from services like Dokploy.
-    """
     return None
 
 app.include_router(api_router)

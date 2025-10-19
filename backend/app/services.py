@@ -1,13 +1,29 @@
 from supabase import Client
-from fastapi import Depends
-from jose import jwt
+from fastapi import Depends, HTTPException, status
+from jose import jwt, JWTError
 from datetime import datetime, timedelta, timezone
+from fastapi.security import OAuth2PasswordBearer
 
 from . import schemas
 from .config import settings
 from .supabase_client import get_supabase_client
 
-# --- Authentication Service ---
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
+
+def get_current_admin_user(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    return {"email": email}
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
@@ -18,8 +34,6 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
-
-# --- Category Services ---
 
 def get_categories(supabase: Client = Depends(get_supabase_client)) -> list[schemas.Category]:
     response = supabase.table("category").select("*").execute()
@@ -36,8 +50,6 @@ def create_category(category: schemas.CategoryCreate, supabase: Client = Depends
 def delete_category(category_id: int, supabase: Client = Depends(get_supabase_client)) -> bool:
     response = supabase.table("category").delete().eq("id", category_id).execute()
     return bool(response.data)
-
-# --- Product Services ---
 
 def get_products(supabase: Client = Depends(get_supabase_client)) -> list[schemas.Product]:
     response = supabase.table("product").select("*, category(*)").execute()
