@@ -9,8 +9,11 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "*"
 
     # Admin credentials
-    ADMIN_EMAIL: str
-    ADMIN_PASSWORD: str
+    AZHAR_ADMIN_EMAIL: str
+    AZHAR_ADMIN_INITIAL_PASSWORD: str
+
+    # Database URL
+    DATABASE_URL: str
 
     # JWT settings
     SECRET_KEY: str

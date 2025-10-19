@@ -4,10 +4,21 @@ from app.api import router as api_router, admin_router
 from app.config import settings
 from app.logging_config import setup_logging
 from app.errors import global_exception_handler
+from alembic.config import Config
+from alembic import command
+import os
 
 setup_logging()
 
 app = FastAPI(title="AzharStore API", version="0.1.0")
+
+@app.on_event("startup")
+def run_migrations():
+    """
+    On application startup, automatically run the Alembic database migrations.
+    """
+    alembic_cfg = Config(os.path.join(os.path.dirname(__file__), "alembic.ini"))
+    command.upgrade(alembic_cfg, "head")
 
 # Register the global exception handler
 app.add_exception_handler(Exception, global_exception_handler)

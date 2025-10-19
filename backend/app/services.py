@@ -1,12 +1,13 @@
-import structlog
+from sqlmodel import Session, select
+from fastapi import Depends, HTTPException
 from jose import jwt
 from datetime import datetime, timedelta, timezone
-from .config import settings
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
-logger = structlog.get_logger(__name__)
+from . import schemas
+from .config import settings
+from .db import get_session
+
+# --- Authentication Service ---
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
@@ -18,80 +19,60 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
-async def get_current_admin_user(token: str = Depends(oauth2_scheme)):
-    """
-    Dependency to validate the JWT token and return the user's email.
-    Raises HTTPException 401 if the token is invalid.
-    """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        email: str | None = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-        return {"email": email}
-    except jwt.JWTError:
-        raise credentials_exception
+# --- Category Services ---
 
-async def get_products():
-    return []
+def get_categories(session: Session = Depends(get_session)) -> list[schemas.Category]:
+    return session.exec(select(schemas.Category)).all()
 
-async def create_product(product_data: dict):
-    # This is a stub. In the future, it will create a product in the database.
-    # Returning a dummy object to satisfy the response_model
-    dummy_category = {
-        "id": "cat_123",
-        "collectionId": "collections",
-        "collectionName": "categories",
-        "created": "2024-01-01T00:00:00Z",
-        "updated": "2024-01-01T00:00:00Z",
-        "name": "Dummy Category"
-    }
-    dummy_product = {
-        "id": "prod_123",
-        "collectionId": "collections",
-        "collectionName": "products",
-        "name": product_data.get("name", "Dummy Product"),
-        "description": product_data.get("description"),
-        "price": product_data.get("price", 99.99),
-        "stockQuantity": product_data.get("stockQuantity", 100),
-        "imageUrl": product_data.get("imageUrl"),
-        "categoryId": product_data.get("categoryId"),
-        "category": dummy_category
-    }
-    return dummy_product
+def get_category(category_id: int, session: Session = Depends(get_session)) -> schemas.Category | None:
+    return session.get(schemas.Category, category_id)
 
-async def update_product(product_id: str, product_data: dict):
-    # This is a stub. In the future, it will update a product in the database.
-    return await create_product(product_data)
+def create_category(category: schemas.CategoryCreate, session: Session = Depends(get_session)) -> schemas.Category:
+    db_category = schemas.Category.model_validate(category)
+    session.add(db_category)
+    session.commit()
+    session.refresh(db_category)
+    return db_category
 
-async def delete_product(product_id: str):
-    # This is a stub. In the future, it will delete a product from the database.
+def delete_category(category_id: int, session: Session = Depends(get_session)) -> bool:
+    category = session.get(schemas.Category, category_id)
+    if not category:
+        return False
+    session.delete(category)
+    session.commit()
     return True
 
-async def get_categories():
-    return []
+# --- Product Services ---
 
-async def create_category(category_data: dict):
-    # This is a stub. In the future, it will create a category in the database.
-    dummy_category = {
-        "id": "cat_123",
-        "collectionId": "collections",
-        "collectionName": "categories",
-        "created": "2024-01-01T00:00:00Z",
-        "updated": "2024-01-01T00:00:00Z",
-        "name": category_data.get("name", "Dummy Category")
-    }
-    return dummy_category
+def get_products(session: Session = Depends(get_session)) -> list[schemas.Product]:
+    return session.exec(select(schemas.Product)).all()
 
-async def update_category(category_id: str, category_data: dict):
-    # This is a stub. In the future, it will update a category in the database.
-    return await create_category(category_data)
+def get_product(product_id: int, session: Session = Depends(get_session)) -> schemas.Product | None:
+    return session.get(schemas.Product, product_id)
 
-async def delete_category(category_id: str):
-    # This is a stub. In the future, it will delete a category from the database.
+def create_product(product: schemas.ProductCreate, session: Session = Depends(get_session)) -> schemas.Product:
+    db_product = schemas.Product.model_validate(product)
+    session.add(db_product)
+    session.commit()
+    session.refresh(db_product)
+    return db_product
+
+def update_product(product_id: int, product: schemas.ProductUpdate, session: Session = Depends(get_session)) -> schemas.Product | None:
+    db_product = session.get(schemas.Product, product_id)
+    if not db_product:
+        return None
+    product_data = product.model_dump(exclude_unset=True)
+    for key, value in product_data.items():
+        setattr(db_product, key, value)
+    session.add(db_product)
+    session.commit()
+    session.refresh(db_product)
+    return db_product
+
+def delete_product(product_id: int, session: Session = Depends(get_session)) -> bool:
+    product = session.get(schemas.Product, product_id)
+    if not product:
+        return False
+    session.delete(product)
+    session.commit()
     return True
