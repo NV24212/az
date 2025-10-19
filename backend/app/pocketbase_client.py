@@ -25,11 +25,13 @@ class PocketBaseClient:
         Get all records from a collection (auto-paginated).
         """
         try:
-            records = await self.client.collection(collection).get_full_list(**(params or {}))
+            query_params = params or {}
+            records = await self.client.collection(collection).get_full_list(
+                query_params=query_params
+            )
             logger.info("Full list retrieved", collection=collection, count=len(records))
             return records
         except Exception as e:
-            # FIX: Catch all exceptions and translate them immediately
             handle_pocketbase_error(e)
 
     async def get_list(
@@ -43,10 +45,12 @@ class PocketBaseClient:
         Get a paginated list of records from a collection.
         """
         try:
-            records = await self.client.collection(collection).get_list(page, per_page, **(params or {}))
+            query_params = params or {}
+            records = await self.client.collection(collection).get_list(
+                page, per_page, query_params=query_params
+            )
             return records
         except Exception as e:
-            # FIX: Catch all exceptions and translate them immediately
             handle_pocketbase_error(e)
 
 
@@ -60,18 +64,17 @@ class PocketBaseClient:
         Get a single record by ID. Returns None if not found.
         """
         try:
-            record = await self.client.collection(collection).get_one(record_id, params or {})
+            query_params = params or {}
+            record = await self.client.collection(collection).get_one(
+                record_id, query_params=query_params
+            )
             return record
         except httpx.HTTPStatusError as e:
-            # FIX: Use explicit httpx exception handling
             if e.response.status_code == 404:
                 logger.warn("Record not found", collection=collection, record_id=record_id)
                 return None
-
-            # If it's another error (400, 403, 500), translate it
             handle_pocketbase_error(e)
         except Exception as e:
-            # Catch other unexpected errors and re-raise after translation attempt
             handle_pocketbase_error(e)
 
 
