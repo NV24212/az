@@ -1,20 +1,19 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, DragEvent } from 'react';
 import { toast } from 'sonner';
 
 type ImageUploaderProps = {
   images: { id: number; image_url: string; is_primary: boolean }[];
-  productId: number;
-  onUpload: (file: File) => Promise<any>;
-  onDelete: (id: number) => Promise<any>;
-  onSetPrimary: (id: number) => Promise<any>;
+  onUpload: (file: File) => void;
+  onDelete: (id: number) => void;
+  onSetPrimary: (id: number) => void;
 };
 
-export default function ImageUploader({ images, productId, onUpload, onDelete, onSetPrimary }: ImageUploaderProps) {
+export default function ImageUploader({ images, onUpload, onDelete, onSetPrimary }: ImageUploaderProps) {
   const [uploading, setUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+  async function handleFileUpload(file: File | null | undefined) {
     if (!file) return;
 
     if (images.length >= 15) {
@@ -22,38 +21,99 @@ export default function ImageUploader({ images, productId, onUpload, onDelete, o
       return;
     }
 
+    if (!file.type.startsWith('image/')) {
+        toast.error('Invalid file type. Please upload an image.');
+        return;
+    }
+
     setUploading(true);
     try {
       await onUpload(file);
+    } catch (error) {
+      // Error is handled by react-query's onError
     } finally {
       setUploading(false);
+      if(fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   }
 
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    handleFileUpload(e.target.files?.[0]);
+  }
+
+  function handleDrop(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFileUpload(e.dataTransfer.files[0]);
+      e.dataTransfer.clearData();
+    }
+  }
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget.contains(e.relatedTarget as Node)) {
+        return;
+    }
+    setIsDragging(false);
+  };
+
   return (
-    <div>
-      <label className="text-sm text-slate-700">Product Images</label>
-      <div className="mt-1 grid grid-cols-3 gap-4">
+    <div
+      className={`p-4 border-2 border-dashed rounded-lg transition-colors ${isDragging ? 'border-[var(--brand)] bg-slate-50' : 'border-slate-300'}`}
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+    >
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
         {images.map((image) => (
-          <div key={image.id} className="relative group">
-            <img src={image.image_url} alt="Product image" className="w-full h-24 object-cover rounded-lg" />
-            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <button onClick={() => onDelete(image.id)} className="text-white text-xs bg-red-600 px-2 py-1 rounded-md">Delete</button>
-              {!image.is_primary && <button onClick={() => onSetPrimary(image.id)} className="text-white text-xs bg-blue-600 px-2 py-1 rounded-md ml-2">Primary</button>}
+          <div key={image.id} className="flex flex-col gap-2">
+            <div className="relative aspect-square">
+              <img src={image.image_url} alt="Product" className="w-full h-full object-cover rounded-lg" />
+              {image.is_primary && <div className="absolute top-1 right-1 text-xs bg-[var(--brand)] text-white px-2 py-1 rounded-md z-10">Primary</div>}
             </div>
-            {image.is_primary && <div className="absolute top-1 right-1 text-xs bg-green-600 text-white px-2 py-1 rounded-md">Primary</div>}
+            <div className="flex justify-center gap-2">
+              {!image.is_primary && (
+                <button type="button" onClick={() => onSetPrimary(image.id)} className="text-slate-600 text-xs px-2 py-1 rounded-md hover:bg-slate-100 border border-slate-300">Set Primary</button>
+              )}
+              <button type="button" onClick={() => onDelete(image.id)} className="text-red-600 text-xs px-2 py-1 rounded-md hover:bg-red-50 border border-red-300">Delete</button>
+            </div>
           </div>
         ))}
         {images.length < 15 && (
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="w-full h-24 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center cursor-pointer hover:bg-slate-50"
+            className="w-full aspect-square border-2 border-dashed border-slate-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 text-slate-500 transition-colors"
           >
-            {uploading ? 'Uploading...' : 'Add Image'}
-            <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*" />
+            {uploading ? (
+              'Uploading...'
+            ) : (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 mb-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" x2="12" y1="3" y2="15" /></svg>
+                <span className="text-center text-sm">Upload or drop file</span>
+              </>
+            )}
+            <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/*" />
           </div>
         )}
       </div>
+      <p className="text-xs text-slate-500 mt-4">You can upload up to 15 images. Drag and drop is supported.</p>
     </div>
   );
 }
