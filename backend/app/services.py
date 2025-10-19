@@ -56,11 +56,11 @@ def delete_category(category_id: int, supabase: Client = Depends(get_supabase_cl
     return bool(response.data)
 
 def get_products(supabase: Client = Depends(get_supabase_client)) -> list[schemas.Product]:
-    response = supabase.table("products").select("*, category:categories(*), product_images(*)").execute()
+    response = supabase.table("products").select("*, category:categories(*), product_images(*), product_variants(*)").execute()
     return response.data
 
 def get_product(product_id: int, supabase: Client = Depends(get_supabase_client)) -> schemas.Product | None:
-    response = supabase.table("products").select("*, category:categories(*), product_images(*)").eq("id", product_id).execute()
+    response = supabase.table("products").select("*, category:categories(*), product_images(*), product_variants(*)").eq("id", product_id).execute()
     return response.data[0] if response.data else None
 
 def create_product(product: schemas.ProductCreate, supabase: Client = Depends(get_supabase_client)) -> schemas.Product:
@@ -76,35 +76,58 @@ def delete_product(product_id: int, supabase: Client = Depends(get_supabase_clie
     return bool(response.data)
 
 def create_product_image(product_id: int, image_url: str, supabase: Client = Depends(get_supabase_client)) -> schemas.ProductImage:
-    response = supabase.table("product_images").insert({"product_id": product_id, "image_url": image_url}).execute()
+    existing_primary_image = supabase.table("product_images").select("id").eq("product_id", product_id).eq("is_primary", True).execute()
+    is_primary = not existing_primary_image.data
+    response = supabase.table("product_images").insert({"product_id": product_id, "image_url": image_url, "is_primary": is_primary}).execute()
     return response.data[0]
 
 def delete_product_image(image_id: int, supabase: Client = Depends(get_supabase_client)) -> bool:
-    # First, get the image URL so we can delete it from storage
-    image_response = supabase.table("product_images").select("image_url").eq("id", image_id).execute()
+    image_response = supabase.table("product_images").select("image_url, product_id, is_primary").eq("id", image_id).execute()
     if not image_response.data:
         return False
 
-    image_url = image_response.data[0]["image_url"]
-    file_path = image_url.split("/")[-2:] # This is a bit brittle, but should work for now
+    image_data = image_response.data[0]
+    image_url = image_data["image_url"]
+    product_id = image_data["product_id"]
+    was_primary = image_data["is_primary"]
 
-    # Delete the file from storage
-    supabase.storage.from_("products").remove([f"{file_path[0]}/{file_path[1]}"])
+    file_path = "/".join(image_url.split("/")[-2:])
 
-    # Delete the record from the database
+    supabase.storage.from_("products").remove([file_path])
+
     response = supabase.table("product_images").delete().eq("id", image_id).execute()
+
+    if was_primary:
+        remaining_images = supabase.table("product_images").select("id").eq("product_id", product_id).order("created_at").execute()
+        if remaining_images.data:
+            new_primary_id = remaining_images.data[0]["id"]
+            supabase.table("product_images").update({"is_primary": True}).eq("id", new_primary_id).execute()
+
     return bool(response.data)
 
 def set_primary_image(image_id: int, supabase: Client = Depends(get_supabase_client)) -> schemas.ProductImage | None:
-    # First, get the product_id for the image
     image_response = supabase.table("product_images").select("product_id").eq("id", image_id).execute()
     if not image_response.data:
         return None
     product_id = image_response.data[0]["product_id"]
 
-    # Set all other images for this product to is_primary = false
     supabase.table("product_images").update({"is_primary": False}).eq("product_id", product_id).execute()
 
-    # Set the selected image to is_primary = true
     response = supabase.table("product_images").update({"is_primary": True}).eq("id", image_id).execute()
+    return response.data[0] if response.data else None
+
+def create_product_variant(product_id: int, variant: schemas.ProductVariantCreate, supabase: Client = Depends(get_supabase_client)) -> schemas.ProductVariant:
+    response = supabase.table("product_variants").insert({"product_id": product_id, **variant.model_dump()}).execute()
+    return response.data[0]
+
+def update_product_variant(variant_id: int, variant: schemas.ProductVariantUpdate, supabase: Client = Depends(get_supabase_client)) -> schemas.ProductVariant | None:
+    response = supabase.table("product_variants").update(variant.model_dump(exclude_unset=True)).eq("id", variant_id).execute()
+    return response.data[0] if response.data else None
+
+def delete_product_variant(variant_id: int, supabase: Client = Depends(get_supabase_client)) -> bool:
+    response = supabase.table("product_variants").delete().eq("id", variant_id).execute()
+    return bool(response.data)
+
+def update_product_variant_image(variant_id: int, image_url: str, supabase: Client = Depends(get_supabase_client)) -> schemas.ProductVariant | None:
+    response = supabase.table("product_variants").update({"image_url": image_url}).eq("id", variant_id).execute()
     return response.data[0] if response.data else None

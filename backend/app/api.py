@@ -110,6 +110,42 @@ def set_primary_image(image_id: int, supabase: Client = Depends(get_supabase_cli
         raise HTTPException(status_code=404, detail="Image not found")
     return image
 
+@admin_router.get("/orders", response_model=List[schemas.Order], tags=["Admin - Orders"])
+def admin_list_orders(supabase: Client = Depends(get_supabase_client)):
+    return []
+
+@admin_router.get("/customers", response_model=List[schemas.Customer], tags=["Admin - Customers"])
+def admin_list_customers(supabase: Client = Depends(get_supabase_client)):
+    return []
+
+@admin_router.post("/products/{product_id}/variants", response_model=schemas.ProductVariant, tags=["Admin - Products"])
+def create_variant(product_id: int, variant: schemas.ProductVariantCreate, supabase: Client = Depends(get_supabase_client)):
+    return services.create_product_variant(product_id=product_id, variant=variant, supabase=supabase)
+
+@admin_router.patch("/products/variants/{variant_id}", response_model=schemas.ProductVariant, tags=["Admin - Products"])
+def update_variant(variant_id: int, variant: schemas.ProductVariantUpdate, supabase: Client = Depends(get_supabase_client)):
+    db_variant = services.update_product_variant(variant_id=variant_id, variant=variant, supabase=supabase)
+    if db_variant is None:
+        raise HTTPException(status_code=404, detail="Variant not found")
+    return db_variant
+
+@admin_router.delete("/products/variants/{variant_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Admin - Products"])
+def delete_variant(variant_id: int, supabase: Client = Depends(get_supabase_client)):
+    success = services.delete_product_variant(variant_id=variant_id, supabase=supabase)
+    if not success:
+        raise HTTPException(status_code=404, detail="Variant not found")
+    return None
+
+@admin_router.post("/products/variants/{variant_id}/image", response_model=schemas.ProductVariant, tags=["Admin - Products"])
+def upload_variant_image(variant_id: int, file: UploadFile = File(...), supabase: Client = Depends(get_supabase_client)):
+    file_path = f"variants/{variant_id}/{uuid.uuid4()}{file.filename}"
+    try:
+        supabase.storage.from_("products").upload(file_path, file.file)
+        image_url = supabase.storage.from_("products").get_public_url(file_path)
+        return services.update_product_variant_image(variant_id=variant_id, image_url=image_url, supabase=supabase)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @admin_router.delete("/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Admin - Categories"])
 def delete_category(category_id: int, supabase: Client = Depends(get_supabase_client)):
     success = services.delete_category(category_id=category_id, supabase=supabase)

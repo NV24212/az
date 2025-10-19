@@ -6,9 +6,11 @@ import Modal from '../../components/ui/Modal';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import Loading from '../../components/ui/Loading';
 import ImageUploader from '../../components/ui/ImageUploader';
+import VariantManager from '../../components/ui/VariantManager';
 
 type ProductImage = { id: number; product_id: number; image_url: string; is_primary: boolean; created_at: string };
-type Product = { id: number; name: string; description?: string; price: number; stock_quantity: number; category_id: number; product_images: ProductImage[] };
+type ProductVariant = { id: number; product_id: number; name: string; stock_quantity: number; image_url?: string };
+type Product = { id: number; name: string; description?: string; price: number; stock_quantity: number | null; category_id: number; product_images: ProductImage[]; product_variants: ProductVariant[] };
 
 export default function Products() {
   const qc = useQueryClient();
@@ -32,6 +34,15 @@ export default function Products() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [open, setOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Product | null>(null);
+  const [variants, setVariants] = useState<Omit<ProductVariant, 'id' | 'product_id'>[]>([]);
+
+  useEffect(() => {
+    if (editing) {
+      setVariants(editing.product_variants);
+    } else {
+      setVariants([]);
+    }
+  }, [editing]);
 
   const { mutate: createMutation, isPending: isCreating } = useMutation({
     mutationFn: async (payload: Omit<Product, 'id'>) => (await api.post('/api/admin/products', payload)).data,
@@ -108,6 +119,56 @@ export default function Products() {
     },
   });
 
+  const { mutate: createVariantMutation } = useMutation({
+    mutationFn: async ({ productId, variant }: { productId: number; variant: Omit<ProductVariant, 'id' | 'product_id'> }) => (await api.post(`/api/admin/products/${productId}/variants`, variant)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-products'] });
+      toast.success('Variant created successfully');
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.detail || 'Failed to create variant');
+    },
+  });
+
+  const { mutate: updateVariantMutation } = useMutation({
+    mutationFn: async ({ variantId, variant }: { variantId: number; variant: Partial<Omit<ProductVariant, 'id' | 'product_id'>> }) => (await api.patch(`/api/admin/products/variants/${variantId}`, variant)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-products'] });
+      toast.success('Variant updated successfully');
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.detail || 'Failed to update variant');
+    },
+  });
+
+  const { mutate: deleteVariantMutation } = useMutation({
+    mutationFn: async (variantId: number) => (await api.delete(`/api/admin/products/variants/${variantId}`)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-products'] });
+      toast.success('Variant deleted successfully');
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.detail || 'Failed to delete variant');
+    },
+  });
+
+  const { mutate: uploadVariantImageMutation } = useMutation({
+    mutationFn: async ({ variantId, file }: { variantId: number; file: File }) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return (await api.post(`/api/admin/products/variants/${variantId}/image`, formData)).data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-products'] });
+      toast.success('Variant image uploaded successfully');
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.detail || 'Failed to upload variant image');
+    },
+  });
+
+  const [variants, setVariants] = useState<Omit<ProductVariant, 'id' | 'product_id'>[]>([]);
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
@@ -116,11 +177,19 @@ export default function Products() {
       name: String(formData.get('name')),
       description: String(formData.get('description') || ''),
       price: parseFloat(String(formData.get('price'))),
-      stock_quantity: parseInt(String(formData.get('stockQuantity')), 10),
+      stock_quantity: variants.length > 0 ? null : parseInt(String(formData.get('stockQuantity')), 10),
       category_id: parseInt(String(formData.get('categoryId')), 10),
     };
+
     if (editing) {
       updateMutation({ id: editing.id, payload });
+      variants.forEach(variant => {
+        if ('id' in variant) {
+          updateVariantMutation({ variantId: (variant as any).id, variant });
+        } else {
+          createVariantMutation({ productId: editing.id, variant });
+        }
+      });
     } else {
       createMutation(payload);
     }
@@ -177,7 +246,7 @@ export default function Products() {
           <div className="grid md:grid-cols-2 gap-3">
             <Field name="name" label="Name" defaultValue={editing?.name} />
             <Field name="price" label="Price" type="number" step="0.01" defaultValue={editing?.price} />
-            <Field name="stockQuantity" label="Stock" type="number" defaultValue={editing?.stock_quantity} />
+            {variants.length === 0 && <Field name="stockQuantity" label="Stock" type="number" defaultValue={editing?.stock_quantity} />}
             <div>
               <label className="text-sm text-slate-700">Category</label>
               <select name="categoryId" defaultValue={editing?.category_id} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]">
@@ -199,6 +268,17 @@ export default function Products() {
                 onSetPrimary={(id) => setPrimaryImageMutation(id)}
               />
             )}
+          </div>
+          <div className="md:col-span-2">
+            <VariantManager
+              variants={variants}
+              onVariantsChange={setVariants}
+              onUpload={(variant, file) => {
+                if ('id' in variant) {
+                  uploadVariantImageMutation({ variantId: (variant as any).id, file });
+                }
+              }}
+            />
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={() => { setOpen(false); setEditing(null); }} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">Cancel</button>
