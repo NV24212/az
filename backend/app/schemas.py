@@ -54,7 +54,7 @@ class ProductCreate(BaseModel):
     name: str
     description: Optional[str] = None
     price: float
-    stock_quantity: int
+    stock_quantity: Optional[int] = None
     category_id: Optional[int] = None
 
 class ProductUpdate(BaseModel):

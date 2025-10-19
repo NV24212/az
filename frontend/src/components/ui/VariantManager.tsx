@@ -45,23 +45,31 @@ export default function VariantManager({ variants, onCreate, onUpdate, onDelete,
       </div>
       <div className="p-4 border border-slate-200 rounded-lg">
         <h4 className="font-medium text-slate-700 mb-2">Add New Variant</h4>
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={newVariant.name}
-            onChange={(e) => setNewVariant({ ...newVariant, name: e.target.value })}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
-            placeholder="Variant Name (e.g., Red, Large)"
-          />
-          <input
-            type="number"
-            value={newVariant.stock_quantity}
-            onChange={(e) => setNewVariant({ ...newVariant, stock_quantity: parseInt(e.target.value, 10) || 0 })}
-            onFocus={handleFocus}
-            className="w-32 rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
-            placeholder="Stock"
-          />
-          <button onClick={addVariant} className="brand-bg text-white px-4 py-2 rounded-lg font-semibold hover:opacity-95 active:scale-[0.98] transition-all whitespace-nowrap">Add Variant</button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+                <label className='text-sm font-medium text-slate-600'>Variant Name</label>
+                <input
+                    type="text"
+                    value={newVariant.name}
+                    onChange={(e) => setNewVariant({ ...newVariant, name: e.target.value })}
+                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                    placeholder="e.g., Red, Large"
+                />
+            </div>
+            <div>
+                <label className='text-sm font-medium text-slate-600'>Stock Quantity</label>
+                <input
+                    type="number"
+                    value={newVariant.stock_quantity}
+                    onChange={(e) => setNewVariant({ ...newVariant, stock_quantity: parseInt(e.target.value, 10) || 0 })}
+                    onFocus={handleFocus}
+                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                    placeholder="e.g. 10"
+                />
+            </div>
+        </div>
+        <div className="flex justify-end mt-4">
+            <button onClick={addVariant} className="brand-bg text-white px-4 py-2 rounded-lg font-semibold hover:opacity-95 active:scale-[0.98] transition-all whitespace-nowrap">Add Variant</button>
         </div>
       </div>
     </div>
