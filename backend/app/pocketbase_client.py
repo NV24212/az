@@ -140,5 +140,4 @@ class PocketBaseClient:
                 if name_error_data.get('code') == 'validation_collection_name_exists':
                     logger.warn("Collection already exists, skipping creation.", collection_name=schema.get("name"))
                     return
-            from.errors import handle_pocketbase_error
             handle_pocketbase_error(e)
