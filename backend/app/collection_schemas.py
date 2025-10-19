@@ -5,7 +5,7 @@ CATEGORIES_SCHEMA = {
     "viewRule": "",
     "createRule": "@request.auth.id != ''",
     "updateRule": "@request.auth.id != ''",
-    "deleteRule": None,
+    "deleteRule": "@request.auth.id != ''", # Changed from None
     "schema": [
         {
             "name": "name",
@@ -23,7 +23,7 @@ PRODUCTS_SCHEMA = {
     "viewRule": "",
     "createRule": "@request.auth.id != ''",
     "updateRule": "@request.auth.id != ''",
-    "deleteRule": None,
+    "deleteRule": "@request.auth.id != ''", # Changed from None
     "schema": [
         {
             "name": "name",

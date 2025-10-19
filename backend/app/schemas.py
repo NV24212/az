@@ -1,5 +1,5 @@
 from __future__ import annotations
-from pydantic import BaseModel, model_validator, ConfigDict # <-- IMPORT ConfigDict
+from pydantic import BaseModel, model_validator, ConfigDict
 from typing import Dict, Any, Optional
 
 # --- Pydantic Models for Authentication ---
@@ -16,12 +16,9 @@ class Token(BaseModel):
 # Add configuration to handle PocketBase system fields (like created, updated)
 # and allow flexible attribute assignment.
 class PBDictBase(BaseModel):
-    # This configuration tells Pydantic to allow extra fields that don't match
-    # the schema to pass through (but they won't be serialized in the response)
-    # and to allow assignment from attributes (dictionaries).
     model_config = ConfigDict(extra='ignore', from_attributes=True)
 
-class CategoryBase(PBDictBase): # <-- Inherit from the new PBDictBase
+class CategoryBase(PBDictBase):
     name: str
 
 class CategoryCreate(CategoryBase):
@@ -35,11 +32,11 @@ class Category(CategoryBase):
     collectionId: str
     collectionName: str
 
-class ProductBase(PBDictBase): # <-- Inherit from the new PBDictBase
+class ProductBase(PBDictBase):
     name: str
     description: str | None = None
-    price: float # <-- Pydantic will now try harder to coerce the input to float
-    stockQuantity: int # <-- Pydantic will now try harder to coerce the input to int
+    price: float
+    stockQuantity: int
     imageUrl: str | None = None
 
 class ProductCreate(ProductBase):
