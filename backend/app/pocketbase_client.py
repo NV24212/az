@@ -25,7 +25,7 @@ class PocketBaseClient:
         Get all records from a collection (auto-paginated).
         """
         try:
-            records = await self.client.collection(collection).get_full_list(query_params=(params or {}))
+            records = await self.client.collection(collection).get_full_list(params=(params or {}))
             logger.info("Full list retrieved", collection=collection, count=len(records))
             return records
         except Exception as e:
@@ -42,7 +42,7 @@ class PocketBaseClient:
         Get a paginated list of records from a collection.
         """
         try:
-            records = await self.client.collection(collection).get_list(page, per_page, **(params or {}))
+            records = await self.client.collection(collection).get_list(page, per_page, params=(params or {}))
             return records
         except Exception as e:
             handle_pocketbase_error(e)
@@ -58,7 +58,7 @@ class PocketBaseClient:
         Get a single record by ID. Returns None if not found.
         """
         try:
-            record = await self.client.collection(collection).get_one(record_id, **(params or {}))
+            record = await self.client.collection(collection).get_one(record_id, params=(params or {}))
             return record
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
@@ -140,5 +140,4 @@ class PocketBaseClient:
                 if name_error_data.get('code') == 'validation_collection_name_exists':
                     logger.warn("Collection already exists, skipping creation.", collection_name=schema.get("name"))
                     return
-            from.errors import handle_pocketbase_error
             handle_pocketbase_error(e)

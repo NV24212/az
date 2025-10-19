@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     POCKETBASE_ADMIN_EMAIL: str
     POCKETBASE_ADMIN_PASSWORD: str
 
+    # Admin auth (single password login for frontend)
+    AZHAR_ADMIN_INITIAL_PASSWORD: str | None = None
+    AZHAR_ADMIN_EMAIL: str | None = None
+
     # JWT settings
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
