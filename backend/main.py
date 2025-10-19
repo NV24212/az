@@ -3,11 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import router as api_router, admin_router
 from app.config import settings
 from app.logging_config import setup_logging
-from app.dependencies import get_pocketbase_admin_client
-from app.collection_schemas import PRODUCTS_SCHEMA, CATEGORIES_SCHEMA
 from app.errors import global_exception_handler
-from app.seeding import seed_database
-import asyncio
 
 setup_logging()
 
@@ -15,19 +11,6 @@ app = FastAPI(title="AzharStore API", version="0.1.0")
 
 # Register the global exception handler
 app.add_exception_handler(Exception, global_exception_handler)
-
-@app.on_event("startup")
-async def ensure_collections_exist():
-    """
-    On application startup, connect to PocketBase and ensure that the
-    necessary collections exist.
-    """
-    pb_client_generator = get_pocketbase_admin_client()
-    pb_client = await anext(pb_client_generator)
-
-    await pb_client.create_collection(CATEGORIES_SCHEMA)
-    await pb_client.create_collection(PRODUCTS_SCHEMA)
-    await seed_database(pb_client)
 
 # Determine the allowed origins for CORS based on the settings.
 # For local development and debugging, it's often useful to allow all origins.

@@ -1,11 +1,9 @@
 import structlog
-import traceback
 from jose import jwt
 from datetime import datetime, timedelta, timezone
 from .config import settings
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from .pocketbase_client import PocketBaseClient
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
 logger = structlog.get_logger(__name__)
@@ -39,38 +37,61 @@ async def get_current_admin_user(token: str = Depends(oauth2_scheme)):
     except jwt.JWTError:
         raise credentials_exception
 
-async def get_products(pb_client: PocketBaseClient):
-    try:
-        raw_products = await pb_client.get_full_list("products", params={"expand": "categoryId"})
-        logger.info("Raw products retrieved from PocketBase", raw_data=raw_products)
-        return raw_products
-    except Exception as e:
-        logger.error("Error retrieving products in service layer", error=str(e), traceback=traceback.format_exc())
-        raise
+async def get_products():
+    return []
 
-async def create_product(pb_client: PocketBaseClient, product_data: dict):
-    return await pb_client.create_record("products", product_data)
+async def create_product(product_data: dict):
+    # This is a stub. In the future, it will create a product in the database.
+    # Returning a dummy object to satisfy the response_model
+    dummy_category = {
+        "id": "cat_123",
+        "collectionId": "collections",
+        "collectionName": "categories",
+        "created": "2024-01-01T00:00:00Z",
+        "updated": "2024-01-01T00:00:00Z",
+        "name": "Dummy Category"
+    }
+    dummy_product = {
+        "id": "prod_123",
+        "collectionId": "collections",
+        "collectionName": "products",
+        "name": product_data.get("name", "Dummy Product"),
+        "description": product_data.get("description"),
+        "price": product_data.get("price", 99.99),
+        "stockQuantity": product_data.get("stockQuantity", 100),
+        "imageUrl": product_data.get("imageUrl"),
+        "categoryId": product_data.get("categoryId"),
+        "category": dummy_category
+    }
+    return dummy_product
 
-async def update_product(pb_client: PocketBaseClient, product_id: str, product_data: dict):
-    return await pb_client.update_record("products", product_id, product_data)
+async def update_product(product_id: str, product_data: dict):
+    # This is a stub. In the future, it will update a product in the database.
+    return await create_product(product_data)
 
-async def delete_product(pb_client: PocketBaseClient, product_id: str):
-    return await pb_client.delete_record("products", product_id)
+async def delete_product(product_id: str):
+    # This is a stub. In the future, it will delete a product from the database.
+    return True
 
-async def get_categories(pb_client: PocketBaseClient):
-    try:
-        raw_categories = await pb_client.get_full_list("categories", params={"fields": "*"})
-        logger.info("Raw categories retrieved from PocketBase", raw_data=raw_categories)
-        return raw_categories
-    except Exception as e:
-        logger.error("Error retrieving categories in service layer", error=str(e), traceback=traceback.format_exc())
-        raise
+async def get_categories():
+    return []
 
-async def create_category(pb_client: PocketBaseClient, category_data: dict):
-    return await pb_client.create_record("categories", category_data)
+async def create_category(category_data: dict):
+    # This is a stub. In the future, it will create a category in the database.
+    dummy_category = {
+        "id": "cat_123",
+        "collectionId": "collections",
+        "collectionName": "categories",
+        "created": "2024-01-01T00:00:00Z",
+        "updated": "2024-01-01T00:00:00Z",
+        "name": category_data.get("name", "Dummy Category")
+    }
+    return dummy_category
 
-async def update_category(pb_client: PocketBaseClient, category_id: str, category_data: dict):
-    return await pb_client.update_record("categories", category_id, category_data)
+async def update_category(category_id: str, category_data: dict):
+    # This is a stub. In the future, it will update a category in the database.
+    return await create_category(category_data)
 
-async def delete_category(pb_client: PocketBaseClient, category_id: str):
-    return await pb_client.delete_record("categories", category_id)
+async def delete_category(category_id: str):
+    # This is a stub. In the future, it will delete a category from the database.
+    return True

@@ -8,10 +8,9 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: str = "*"
 
-    # PocketBase settings
-    POCKETBASE_URL: str
-    POCKETBASE_ADMIN_EMAIL: str
-    POCKETBASE_ADMIN_PASSWORD: str
+    # Admin credentials
+    ADMIN_EMAIL: str
+    ADMIN_PASSWORD: str
 
     # JWT settings
     SECRET_KEY: str
