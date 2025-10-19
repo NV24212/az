@@ -1,5 +1,3 @@
-import structlog
-import traceback # Ensure this is imported for traceback.format_exc()
 from jose import jwt
 from datetime import datetime, timedelta, timezone
 from .config import settings
@@ -8,7 +6,6 @@ from fastapi.security import OAuth2PasswordBearer
 from .pocketbase_client import PocketBaseClient
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
-logger = structlog.get_logger(__name__)
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
@@ -40,13 +37,7 @@ async def get_current_admin_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
 
 async def get_products(pb_client: PocketBaseClient):
-    try:
-        raw_products = await pb_client.get_full_list("products", params={"expand": "categoryId"})
-        logger.info("Raw products retrieved from PocketBase", raw_data=raw_products) # <--- THIS IS KEY
-        return raw_products
-    except Exception as e:
-        logger.error("Error retrieving products in service layer", error=str(e), traceback=traceback.format_exc())
-        raise # Re-raise to let the global exception handler deal with it
+    return await pb_client.get_full_list("products", params={"expand": "categoryId"})
 
 async def create_product(pb_client: PocketBaseClient, product_data: dict):
     return await pb_client.create_record("products", product_data)

@@ -25,10 +25,7 @@ class PocketBaseClient:
         Get all records from a collection (auto-paginated).
         """
         try:
-            query_params = params or {}
-            records = await self.client.collection(collection).get_full_list(
-                query_params=query_params
-            )
+            records = await self.client.collection(collection).get_full_list(**(params or {}))
             logger.info("Full list retrieved", collection=collection, count=len(records))
             return records
         except Exception as e:
@@ -45,10 +42,7 @@ class PocketBaseClient:
         Get a paginated list of records from a collection.
         """
         try:
-            query_params = params or {}
-            records = await self.client.collection(collection).get_list(
-                page, per_page, query_params=query_params
-            )
+            records = await self.client.collection(collection).get_list(page, per_page, **(params or {}))
             return records
         except Exception as e:
             handle_pocketbase_error(e)
@@ -64,10 +58,7 @@ class PocketBaseClient:
         Get a single record by ID. Returns None if not found.
         """
         try:
-            query_params = params or {}
-            record = await self.client.collection(collection).get_one(
-                record_id, query_params=query_params
-            )
+            record = await self.client.collection(collection).get_one(record_id, **(params or {}))
             return record
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
@@ -91,7 +82,6 @@ class PocketBaseClient:
             logger.info("Record created", collection=collection, record_id=record.get('id'))
             return record
         except Exception as e:
-            # FIX: Catch all exceptions and translate them immediately
             handle_pocketbase_error(e)
 
 
@@ -109,7 +99,6 @@ class PocketBaseClient:
             logger.info("Record updated", collection=collection, record_id=record_id)
             return record
         except Exception as e:
-            # FIX: Catch all exceptions and translate them immediately
             handle_pocketbase_error(e)
 
 
@@ -122,7 +111,6 @@ class PocketBaseClient:
             logger.info("Record deleted", collection=collection, record_id=record_id)
             return True
         except Exception as e:
-            # FIX: Catch all exceptions and translate them immediately
             handle_pocketbase_error(e)
 
     async def health_check(self) -> bool:
@@ -132,7 +120,6 @@ class PocketBaseClient:
         Returns:
             bool: True if the PocketBase instance is responsive and healthy.
         """
-        # (No change here, as health checks are typically handled separately)
         try:
             response = await self.client.health.check()
             return response.get("code") == 200
@@ -148,18 +135,10 @@ class PocketBaseClient:
             await self.client.collections.create(schema)
             logger.info("Collection created successfully", collection_name=schema.get("name"))
         except Exception as e:
-            # FIX: Only call the error handler for unexpected, critical faults.
-
-            # 1. Check for the specific "Collection already exists" error object
             if isinstance(e, PocketBaseBadRequestError):
-
-                # The detailed error code confirms the collection name clash
                 name_error_data = e.data.get('data', {}).get('name', {})
                 if name_error_data.get('code') == 'validation_collection_name_exists':
                     logger.warn("Collection already exists, skipping creation.", collection_name=schema.get("name"))
-                    return # <-- EXIT CLEANLY HERE. DO NOT CALL handle_pocketbase_error.
-
-            # 2. If it is any other error (e.g., connection fail, bad schema field),
-            # we want to treat it as a critical fault during startup.
+                    return
             from.errors import handle_pocketbase_error
             handle_pocketbase_error(e)
