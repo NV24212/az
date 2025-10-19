@@ -17,7 +17,7 @@ export default function Login() {
     setLoading(true)
     setError(null)
     try {
-      const res = await api.post('/api/admin/login', { password })
+      const res = await api.post('/api/login', { password })
       setToken(res.data.access_token)
       navigate(from, { replace: true })
     } catch (err: any) {
