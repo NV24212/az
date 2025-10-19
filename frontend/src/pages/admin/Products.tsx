@@ -82,7 +82,7 @@ export default function Products() {
                     <td className="py-2 pr-4">{p.name}</td>
                     <td className="py-2 pr-4">${p.price}</td>
                     <td className="py-2 pr-4">{p.stock_quantity ?? '-'}</td>
-                    <td className="py-2 pr-4">{p.category.name}</td>
+                    <td className="py-2 pr-4">{p.category?.name || '-'}</td>
                     <td className="py-2 pr-4">
                       <div className="flex gap-2">
                         <button onClick={() => handleEdit(p)} className="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">Edit</button>
