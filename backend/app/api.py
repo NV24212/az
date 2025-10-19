@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from typing import List
 from supabase import Client
 import secrets
+import uuid
 
 from . import services, schemas
 from .config import settings
@@ -84,6 +85,30 @@ def update_category(category_id: int, category: schemas.CategoryCreate, supabase
     if db_category is None:
         raise HTTPException(status_code=404, detail="Category not found")
     return db_category
+
+@admin_router.post("/products/{product_id}/images", response_model=schemas.ProductImage, tags=["Admin - Products"])
+def upload_product_image(product_id: int, file: UploadFile = File(...), supabase: Client = Depends(get_supabase_client)):
+    file_path = f"{product_id}/{uuid.uuid4()}{file.filename}"
+    try:
+        supabase.storage.from_("products").upload(file_path, file.file)
+        image_url = supabase.storage.from_("products").get_public_url(file_path)
+        return services.create_product_image(product_id=product_id, image_url=image_url, supabase=supabase)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@admin_router.delete("/products/images/{image_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Admin - Products"])
+def delete_product_image(image_id: int, supabase: Client = Depends(get_supabase_client)):
+    success = services.delete_product_image(image_id=image_id, supabase=supabase)
+    if not success:
+        raise HTTPException(status_code=404, detail="Image not found")
+    return None
+
+@admin_router.post("/products/images/{image_id}/set-primary", response_model=schemas.ProductImage, tags=["Admin - Products"])
+def set_primary_image(image_id: int, supabase: Client = Depends(get_supabase_client)):
+    image = services.set_primary_image(image_id=image_id, supabase=supabase)
+    if image is None:
+        raise HTTPException(status_code=404, detail="Image not found")
+    return image
 
 @admin_router.delete("/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Admin - Categories"])
 def delete_category(category_id: int, supabase: Client = Depends(get_supabase_client)):
