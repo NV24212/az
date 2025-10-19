@@ -25,7 +25,7 @@ class PocketBaseClient:
         Get all records from a collection (auto-paginated).
         """
         try:
-            records = await self.client.collection(collection).get_full_list(query_params=(params or {}))
+            records = await self.client.collection(collection).get_full_list(params=(params or {}))
             logger.info("Full list retrieved", collection=collection, count=len(records))
             return records
         except Exception as e:
