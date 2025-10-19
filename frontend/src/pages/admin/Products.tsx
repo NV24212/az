@@ -37,12 +37,12 @@ export default function Products() {
   const [variants, setVariants] = useState<Omit<ProductVariant, 'id' | 'product_id'>[]>([]);
 
   useEffect(() => {
-    if (editing) {
+    if (open && editing) {
       setVariants(editing.product_variants);
     } else {
       setVariants([]);
     }
-  }, [editing]);
+  }, [open, editing]);
 
   const { mutate: createMutation, isPending: isCreating } = useMutation({
     mutationFn: async (payload: Omit<Product, 'id'>) => (await api.post('/api/admin/products', payload)).data,
