@@ -54,7 +54,7 @@ class Product(ProductBase):
     id: str
     collectionId: str
     collectionName: str
-    categoryId: str
+    categoryId: Optional[str] = None
     category: Optional[Category] = None
 
     @model_validator(mode='before')
