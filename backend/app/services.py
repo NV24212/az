@@ -47,6 +47,10 @@ def create_category(category: schemas.CategoryCreate, supabase: Client = Depends
     response = supabase.table("categories").insert(category.model_dump()).execute()
     return response.data[0]
 
+def update_category(category_id: int, category: schemas.CategoryCreate, supabase: Client = Depends(get_supabase_client)) -> schemas.Category | None:
+    response = supabase.table("categories").update(category.model_dump()).eq("id", category_id).execute()
+    return response.data[0] if response.data else None
+
 def delete_category(category_id: int, supabase: Client = Depends(get_supabase_client)) -> bool:
     response = supabase.table("categories").delete().eq("id", category_id).execute()
     return bool(response.data)

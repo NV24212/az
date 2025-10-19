@@ -1,11 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { api } from '../../lib/api';
 import Modal from '../../components/ui/Modal';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import Loading from '../../components/ui/Loading';
 
-type Product = { productId: number; name: string; description?: string; price: number; stockQuantity: number; imageUrl?: string; categoryId: number };
+type Product = { id: number; name: string; description?: string; price: number; stock_quantity: number; image_url?: string; category_id: number };
 
 export default function Products() {
   const qc = useQueryClient();
@@ -13,7 +14,7 @@ export default function Products() {
   const { data: products = [], isLoading: isLoadingProducts } = useQuery({
     queryKey: ['admin-products'],
     queryFn: async () => {
-      const res = await api.get('/api/admin/products/?limit=500');
+      const res = await api.get('/api/admin/products');
       return res.data as Product[];
     },
   });
@@ -21,8 +22,8 @@ export default function Products() {
   const { data: categories = [], isLoading: isLoadingCategories } = useQuery({
     queryKey: ['admin-categories'],
     queryFn: async () => {
-      const res = await api.get('/api/admin/categories/?limit=500');
-      return res.data as { categoryId: number; name: string }[];
+      const res = await api.get('/api/admin/categories');
+      return res.data as { id: number; name: string }[];
     },
   });
 
@@ -31,20 +32,28 @@ export default function Products() {
   const [confirmDelete, setConfirmDelete] = useState<Product | null>(null);
 
   const { mutate: createMutation, isPending: isCreating } = useMutation({
-    mutationFn: async (payload: Omit<Product, 'productId'>) => (await api.post('/api/admin/products/', payload)).data,
+    mutationFn: async (payload: Omit<Product, 'id'>) => (await api.post('/api/admin/products', payload)).data,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-products'] });
       setOpen(false);
       setEditing(null);
+      toast.success('Product created successfully');
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.detail || 'Failed to create product');
     },
   });
 
   const { mutate: updateMutation, isPending: isUpdating } = useMutation({
-    mutationFn: async ({ id, payload }: { id: number; payload: Omit<Product, 'productId'> }) => (await api.put(`/api/admin/products/${id}`, payload)).data,
+    mutationFn: async ({ id, payload }: { id: number; payload: Partial<Omit<Product, 'id'>> }) => (await api.patch(`/api/admin/products/${id}`, payload)).data,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-products'] });
       setOpen(false);
       setEditing(null);
+      toast.success('Product updated successfully');
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.detail || 'Failed to update product');
     },
   });
 
@@ -53,6 +62,10 @@ export default function Products() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-products'] });
       setConfirmDelete(null);
+      toast.success('Product deleted successfully');
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.detail || 'Failed to delete product');
     },
   });
 
@@ -64,12 +77,12 @@ export default function Products() {
       name: String(formData.get('name')),
       description: String(formData.get('description') || ''),
       price: parseFloat(String(formData.get('price'))),
-      stockQuantity: parseInt(String(formData.get('stockQuantity')), 10),
-      imageUrl: String(formData.get('imageUrl') || ''),
-      categoryId: parseInt(String(formData.get('categoryId')), 10),
+      stock_quantity: parseInt(String(formData.get('stockQuantity')), 10),
+      image_url: String(formData.get('imageUrl') || ''),
+      category_id: parseInt(String(formData.get('categoryId')), 10),
     };
     if (editing) {
-      updateMutation({ id: editing.productId, payload });
+      updateMutation({ id: editing.id, payload });
     } else {
       createMutation(payload);
     }
@@ -101,12 +114,12 @@ export default function Products() {
               </thead>
               <tbody>
                 {products.map((p, i) => (
-                  <tr key={p.productId} className={i % 2 ? 'bg-slate-50' : ''}>
-                    <td className="py-2 pr-4">{p.productId}</td>
+                  <tr key={p.id} className={i % 2 ? 'bg-slate-50' : ''}>
+                    <td className="py-2 pr-4">{p.id}</td>
                     <td className="py-2 pr-4">{p.name}</td>
                     <td className="py-2 pr-4">${p.price}</td>
-                    <td className="py-2 pr-4">{p.stockQuantity}</td>
-                    <td className="py-2 pr-4">{categories.find(c => c.categoryId === p.categoryId)?.name || p.categoryId}</td>
+                    <td className="py-2 pr-4">{p.stock_quantity}</td>
+                    <td className="py-2 pr-4">{categories.find(c => c.id === p.category_id)?.name || p.category_id}</td>
                     <td className="py-2 pr-4">
                       <div className="flex gap-2">
                         <button onClick={() => { setEditing(p); setOpen(true); }} className="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">Edit</button>
@@ -126,12 +139,12 @@ export default function Products() {
           <div className="grid md:grid-cols-2 gap-3">
             <Field name="name" label="Name" defaultValue={editing?.name} />
             <Field name="price" label="Price" type="number" step="0.01" defaultValue={editing?.price} />
-            <Field name="stockQuantity" label="Stock" type="number" defaultValue={editing?.stockQuantity} />
-            <Field name="imageUrl" label="Image URL" defaultValue={editing?.imageUrl} />
+            <Field name="stockQuantity" label="Stock" type="number" defaultValue={editing?.stock_quantity} />
+            <Field name="imageUrl" label="Image URL" defaultValue={editing?.image_url} />
             <div>
               <label className="text-sm text-slate-700">Category</label>
-              <select name="categoryId" defaultValue={editing?.categoryId} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]">
-                {categories.map(c => <option key={c.categoryId} value={c.categoryId}>{c.name}</option>)}
+              <select name="categoryId" defaultValue={editing?.category_id} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]">
+                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div className="md:col-span-2">
@@ -148,7 +161,7 @@ export default function Products() {
         </form>
       </Modal>
 
-      <ConfirmDialog open={!!confirmDelete} title="Delete Product" onCancel={() => setConfirmDelete(null)} onConfirm={() => { if (confirmDelete) deleteMutation(confirmDelete.productId); }} message={<span>Are you sure you want to delete <b>{confirmDelete?.name}</b>? This action cannot be undone.</span>} isPending={isDeleting} />
+      <ConfirmDialog open={!!confirmDelete} title="Delete Product" onCancel={() => setConfirmDelete(null)} onConfirm={() => { if (confirmDelete) deleteMutation(confirmDelete.id); }} message={<span>Are you sure you want to delete <b>{confirmDelete?.name}</b>? This action cannot be undone.</span>} isPending={isDeleting} />
     </div>
   );
 }

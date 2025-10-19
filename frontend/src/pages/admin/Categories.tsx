@@ -1,12 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { api } from '../../lib/api';
 import Modal from '../../components/ui/Modal';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import Loading from '../../components/ui/Loading';
 
 type Category = {
-  categoryId: number;
+  id: number;
   name: string;
 };
 
@@ -16,7 +17,7 @@ export default function Categories() {
   const { data: categories = [], isLoading } = useQuery<Category[]>({
     queryKey: ['admin-categories'],
     queryFn: async () => {
-      const res = await api.get('/api/admin/categories/?limit=500');
+      const res = await api.get('/api/admin/categories');
       return res.data;
     },
   });
@@ -26,20 +27,28 @@ export default function Categories() {
   const [confirmDelete, setConfirmDelete] = useState<Category | null>(null);
 
   const { mutate: createMutation, isPending: isCreating } = useMutation({
-    mutationFn: async (payload: Omit<Category, 'categoryId'>) => (await api.post('/api/admin/categories/', payload)).data,
+    mutationFn: async (payload: Omit<Category, 'id'>) => (await api.post('/api/admin/categories', payload)).data,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-categories'] });
       setOpen(false);
       setEditing(null);
+      toast.success('Category created successfully');
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.detail || 'Failed to create category');
     },
   });
 
   const { mutate: updateMutation, isPending: isUpdating } = useMutation({
-    mutationFn: async ({ id, payload }: { id: number; payload: Omit<Category, 'categoryId'> }) => (await api.put(`/api/admin/categories/${id}`, payload)).data,
+    mutationFn: async ({ id, payload }: { id: number; payload: Omit<Category, 'id'> }) => (await api.patch(`/api/admin/categories/${id}`, payload)).data,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-categories'] });
       setOpen(false);
       setEditing(null);
+      toast.success('Category updated successfully');
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.detail || 'Failed to update category');
     },
   });
 
@@ -48,6 +57,10 @@ export default function Categories() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-categories'] });
       setConfirmDelete(null);
+      toast.success('Category deleted successfully');
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.detail || 'Failed to delete category');
     },
   });
 
@@ -59,7 +72,7 @@ export default function Categories() {
       name: String(formData.get('name')),
     };
     if (editing) {
-      updateMutation({ id: editing.categoryId, payload });
+      updateMutation({ id: editing.id, payload });
     } else {
       createMutation(payload);
     }
@@ -88,8 +101,8 @@ export default function Categories() {
               </thead>
               <tbody>
                 {categories.map((c, i) => (
-                  <tr key={c.categoryId} className={i % 2 ? 'bg-slate-50' : ''}>
-                    <td className="py-2 pr-4">{c.categoryId}</td>
+                  <tr key={c.id} className={i % 2 ? 'bg-slate-50' : ''}>
+                    <td className="py-2 pr-4">{c.id}</td>
                     <td className="py-2 pr-4">{c.name}</td>
                     <td className="py-2 pr-4">
                       <div className="flex gap-2">
@@ -117,7 +130,7 @@ export default function Categories() {
         </form>
       </Modal>
 
-      <ConfirmDialog open={!!confirmDelete} title="Delete Category" onCancel={() => setConfirmDelete(null)} onConfirm={() => { if (confirmDelete) deleteMutation(confirmDelete.categoryId); }} message={<span>Are you sure you want to delete <b>{confirmDelete?.name}</b>? This action cannot be undone.</span>} isPending={isDeleting} />
+      <ConfirmDialog open={!!confirmDelete} title="Delete Category" onCancel={() => setConfirmDelete(null)} onConfirm={() => { if (confirmDelete) deleteMutation(confirmDelete.id); }} message={<span>Are you sure you want to delete <b>{confirmDelete?.name}</b>? This action cannot be undone.</span>} isPending={isDeleting} />
     </div>
   );
 }

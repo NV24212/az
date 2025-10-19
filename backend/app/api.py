@@ -70,6 +70,21 @@ def delete_product(product_id: int, supabase: Client = Depends(get_supabase_clie
 def create_category(category: schemas.CategoryCreate, supabase: Client = Depends(get_supabase_client)):
     return services.create_category(category=category, supabase=supabase)
 
+@admin_router.get("/products", response_model=List[schemas.Product], tags=["Admin - Products"])
+def admin_list_products(supabase: Client = Depends(get_supabase_client)):
+    return services.get_products(supabase=supabase)
+
+@admin_router.get("/categories", response_model=List[schemas.Category], tags=["Admin - Categories"])
+def admin_list_categories(supabase: Client = Depends(get_supabase_client)):
+    return services.get_categories(supabase=supabase)
+
+@admin_router.patch("/categories/{category_id}", response_model=schemas.Category, tags=["Admin - Categories"])
+def update_category(category_id: int, category: schemas.CategoryCreate, supabase: Client = Depends(get_supabase_client)):
+    db_category = services.update_category(category_id=category_id, category=category, supabase=supabase)
+    if db_category is None:
+        raise HTTPException(status_code=404, detail="Category not found")
+    return db_category
+
 @admin_router.delete("/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Admin - Categories"])
 def delete_category(category_id: int, supabase: Client = Depends(get_supabase_client)):
     success = services.delete_category(category_id=category_id, supabase=supabase)
