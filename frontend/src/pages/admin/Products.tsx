@@ -37,7 +37,7 @@ export default function Products() {
   const [variants, setVariants] = useState<Omit<ProductVariant, 'id' | 'product_id'>[]>([]);
 
   useEffect(() => {
-    if (open && editing?.product_variants) {
+    if (open && editing && Array.isArray(editing.product_variants)) {
       setVariants(editing.product_variants);
     } else {
       setVariants([]);
@@ -50,6 +50,10 @@ export default function Products() {
       qc.invalidateQueries({ queryKey: ['admin-products'] });
       toast.success('Product created successfully');
       setEditing(data);
+      // Manually update the products query data to avoid a refetch
+      qc.setQueryData(['admin-products'], (oldData: Product[] | undefined) => {
+        return oldData ? [...oldData, data] : [data];
+      });
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.detail || 'Failed to create product');
