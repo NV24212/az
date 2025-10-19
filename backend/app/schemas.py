@@ -31,6 +31,8 @@ class Category(CategoryBase):
     id: str
     collectionId: str
     collectionName: str
+    created: str
+    updated: str
 
 class ProductBase(PBDictBase):
     name: str
