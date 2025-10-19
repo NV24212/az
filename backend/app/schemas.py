@@ -2,6 +2,15 @@ from __future__ import annotations
 from pydantic import BaseModel, model_validator, ConfigDict # <-- IMPORT ConfigDict
 from typing import Dict, Any, Optional
 
+# --- Pydantic Models for Authentication ---
+class AdminLoginRequest(BaseModel):
+    email: str
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
 # --- Schemas for PocketBase Records ---
 
 # Add configuration to handle PocketBase system fields (like created, updated)
@@ -64,7 +73,8 @@ class Product(ProductBase):
             if expanded_category_data:
                 # If PocketBase returns a list for a maxSelect=1 field, use the first item.
                 if isinstance(expanded_category_data, list):
-                    data['category'] = expanded_category_data[0] if expanded_category_data else None
+                    if expanded_category_data:
+                        data['category'] = expanded_category_data[0]
                 else:
                     # If it's a dict (the actual Category record)
                     data['category'] = expanded_category_data
