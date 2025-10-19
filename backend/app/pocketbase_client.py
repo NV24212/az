@@ -1,16 +1,61 @@
 """
 A stateless, refactored PocketBase client designed for use with
 FastAPI's dependency injection system.
+
+This implementation includes compatibility logic so it can call the
+installed PocketBase SDK methods regardless of whether they expect
+'query_params', 'params', or plain kwargs for query parameters.
 """
 from pocketbase import PocketBase
 from typing import Optional, Dict, Any
 import structlog
-# Import necessary error classes and handler function
+import inspect
 import httpx
-from.errors import handle_pocketbase_error
+
+# Use a relative import for the shared error handler
+from .errors import handle_pocketbase_error
 from pocketbase.models.errors import PocketBaseBadRequestError, PocketBaseError
 
 logger = structlog.get_logger(__name__)
+
+
+async def _call_with_compatible_params(func, params: Optional[Dict[str, Any]]):
+    """
+    Call a PocketBase SDK function (usually async) with the appropriate
+    argument style depending on what the installed SDK expects.
+
+    Tries, in order:
+    1. call(func, query_params=params)
+    2. call(func, params=params)
+    3. call(func, **params)  # pass as kwargs (e.g. expand="...", fields="...")
+    4. call(func, params)    # positional single-arg (less common)
+    """
+    params = params or {}
+
+    sig = inspect.signature(func)
+    param_names = sig.parameters.keys()
+
+    # Try the common keyword names first
+    if "query_params" in param_names:
+        return await func(query_params=params)
+    if "params" in param_names:
+        return await func(params=params)
+
+    # Otherwise, try to pass params as kwargs (expand=..., fields=..., etc.)
+    if params:
+        try:
+            return await func(**params)
+        except TypeError:
+            # fallthrough to try positional if that exists
+            pass
+
+    # As last resort, try calling the function without params
+    try:
+        return await func()
+    except TypeError:
+        # Nothing worked; re-raise so the outer except can handle it
+        raise
+
 
 class PocketBaseClient:
     def __init__(self, client: PocketBase):
@@ -23,9 +68,14 @@ class PocketBaseClient:
     ) -> list:
         """
         Get all records from a collection (auto-paginated).
+        Compatible with different PocketBase SDK parameter names.
         """
         try:
-            records = await self.client.collection(collection).get_full_list(params=(params or {}))
+            crud = self.client.collection(collection)
+            func = getattr(crud, "get_full_list", None)
+            if func is None:
+                raise RuntimeError("PocketBase CRUD service does not expose 'get_full_list'")
+            records = await _call_with_compatible_params(func, params)
             logger.info("Full list retrieved", collection=collection, count=len(records))
             return records
         except Exception as e:
@@ -40,10 +90,25 @@ class PocketBaseClient:
     ) -> Dict[str, Any]:
         """
         Get a paginated list of records from a collection.
+        Compatible with SDKs that accept params/query_params or kwargs.
         """
         try:
-            records = await self.client.collection(collection).get_list(page, per_page, params=(params or {}))
-            return records
+            crud = self.client.collection(collection)
+            func = getattr(crud, "get_list")
+            # Many SDKs expect (page, per_page, query_params=...)
+            sig = inspect.signature(func)
+            if "query_params" in sig.parameters:
+                return await func(page, per_page, query_params=(params or {}))
+            if "params" in sig.parameters:
+                return await func(page, per_page, params=params or {})
+            # fallback: try kwargs for page/per_page + params expansion
+            if params:
+                try:
+                    return await func(page, per_page, **params)
+                except TypeError:
+                    pass
+            # last resort: call with page and per_page only
+            return await func(page, per_page)
         except Exception as e:
             handle_pocketbase_error(e)
 
@@ -56,13 +121,29 @@ class PocketBaseClient:
     ) -> Optional[Dict[str, Any]]:
         """
         Get a single record by ID. Returns None if not found.
+        Compatible with SDK differences in query parameter naming.
         """
         try:
-            record = await self.client.collection(collection).get_one(record_id, params=(params or {}))
+            crud = self.client.collection(collection)
+            func = getattr(crud, "get_one", None) or getattr(crud, "get_record", None)
+            if func is None:
+                raise RuntimeError("PocketBase CRUD service does not expose 'get_one' or 'get_record'")
+
+            sig = inspect.signature(func)
+            if "query_params" in sig.parameters:
+                record = await func(record_id, query_params=(params or {}))
+            elif "params" in sig.parameters:
+                record = await func(record_id, params=params or {})
+            else:
+                try:
+                    record = await func(record_id, **(params or {}))
+                except TypeError:
+                    record = await func(record_id)
+
             return record
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
-                logger.warn("Record not found", collection=collection, record_id=record_id)
+                logger.warning("Record not found", collection=collection, record_id=record_id)
                 return None
             handle_pocketbase_error(e)
         except Exception as e:
@@ -138,6 +219,6 @@ class PocketBaseClient:
             if isinstance(e, PocketBaseBadRequestError):
                 name_error_data = e.data.get('data', {}).get('name', {})
                 if name_error_data.get('code') == 'validation_collection_name_exists':
-                    logger.warn("Collection already exists, skipping creation.", collection_name=schema.get("name"))
+                    logger.warning("Collection already exists, skipping creation.", collection_name=schema.get("name"))
                     return
             handle_pocketbase_error(e)
