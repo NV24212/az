@@ -90,7 +90,8 @@ def update_category(category_id: int, category: schemas.CategoryCreate, supabase
 def upload_product_image(product_id: int, file: UploadFile = File(...), supabase: Client = Depends(get_supabase_client)):
     file_path = f"{product_id}/{uuid.uuid4()}{file.filename}"
     try:
-        supabase.storage.from_("products").upload(file_path, file.file)
+        file_content = file.file.read()
+        supabase.storage.from_("products").upload(file_path, file_content)
         image_url = supabase.storage.from_("products").get_public_url(file_path)
         return services.create_product_image(product_id=product_id, image_url=image_url, supabase=supabase)
     except Exception as e:
@@ -146,7 +147,8 @@ def delete_variant(variant_id: int, supabase: Client = Depends(get_supabase_clie
 def upload_variant_image(variant_id: int, file: UploadFile = File(...), supabase: Client = Depends(get_supabase_client)):
     file_path = f"variants/{variant_id}/{uuid.uuid4()}{file.filename}"
     try:
-        supabase.storage.from_("products").upload(file_path, file.file)
+        file_content = file.file.read()
+        supabase.storage.from_("products").upload(file_path, file_content)
         image_url = supabase.storage.from_("products").get_public_url(file_path)
         return services.update_product_variant_image(variant_id=variant_id, image_url=image_url, supabase=supabase)
     except Exception as e:

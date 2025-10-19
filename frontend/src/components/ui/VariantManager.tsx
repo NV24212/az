@@ -4,12 +4,15 @@ import { toast } from 'sonner';
 type Variant = { id?: number; name: string; stock_quantity: number; image_url?: string };
 
 type VariantManagerProps = {
+  productId: number;
   variants: Variant[];
-  onVariantsChange: (variants: Variant[]) => void;
+  onCreate: (variant: Omit<Variant, 'id'>) => Promise<any>;
+  onUpdate: (variant: Variant) => Promise<any>;
+  onDelete: (id: number) => Promise<any>;
   onUpload: (variant: Variant, file: File) => Promise<any>;
 };
 
-export default function VariantManager({ variants, onVariantsChange, onUpload }: VariantManagerProps) {
+export default function VariantManager({ productId, variants, onCreate, onUpdate, onDelete, onUpload }: VariantManagerProps) {
   const [newVariant, setNewVariant] = useState({ name: '', stock_quantity: 0 });
 
   function addVariant() {
@@ -17,38 +20,32 @@ export default function VariantManager({ variants, onVariantsChange, onUpload }:
       toast.error('Please enter a valid name and stock for the variant.');
       return;
     }
-    onVariantsChange([...variants, newVariant]);
+    onCreate(newVariant);
     setNewVariant({ name: '', stock_quantity: 0 });
   }
 
-  function updateVariant(index: number, updatedVariant: Variant) {
-    const newVariants = [...variants];
-    newVariants[index] = updatedVariant;
-    onVariantsChange(newVariants);
-  }
-
-  function removeVariant(index: number) {
-    const newVariants = [...variants];
-    newVariants.splice(index, 1);
-    onVariantsChange(newVariants);
+  function removeVariant(id?: number) {
+    if (id) {
+      onDelete(id);
+    }
   }
 
   return (
     <div>
       <label className="text-sm text-slate-700">Product Variants</label>
-      {variants.map((variant, index) => (
-        <div key={index} className="flex items-center gap-2 mt-2">
+      {variants.map((variant) => (
+        <div key={variant.id} className="flex items-center gap-2 mt-2">
           <input
             type="text"
-            value={variant.name}
-            onChange={(e) => updateVariant(index, { ...variant, name: e.target.value })}
+            defaultValue={variant.name}
+            onBlur={(e) => onUpdate({ ...variant, name: e.target.value })}
             className="w-full rounded-lg border border-slate-300 px-3 py-2"
             placeholder="Variant Name"
           />
           <input
             type="number"
-            value={variant.stock_quantity}
-            onChange={(e) => updateVariant(index, { ...variant, stock_quantity: parseInt(e.target.value, 10) })}
+            defaultValue={variant.stock_quantity}
+            onBlur={(e) => onUpdate({ ...variant, stock_quantity: parseInt(e.target.value, 10) })}
             className="w-32 rounded-lg border border-slate-300 px-3 py-2"
             placeholder="Stock"
           />
@@ -61,7 +58,7 @@ export default function VariantManager({ variants, onVariantsChange, onUpload }:
             }}
             className="w-32"
           />
-          <button onClick={() => removeVariant(index)} className="text-red-600">Remove</button>
+          <button onClick={() => removeVariant(variant.id)} className="text-red-600">Remove</button>
         </div>
       ))}
       <div className="flex items-center gap-2 mt-2">

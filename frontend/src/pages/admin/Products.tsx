@@ -34,15 +34,7 @@ export default function Products() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [open, setOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Product | null>(null);
-  const [variants, setVariants] = useState<Omit<ProductVariant, 'id' | 'product_id'>[]>([]);
-
-  useEffect(() => {
-    if (open && editing && Array.isArray(editing.product_variants)) {
-      setVariants(editing.product_variants);
-    } else {
-      setVariants([]);
-    }
-  }, [open, editing]);
+  const [activeTab, setActiveTab] = useState('details');
 
   const { mutate: createMutation, isPending: isCreating } = useMutation({
     mutationFn: async (payload: Omit<Product, 'id'>) => (await api.post('/api/admin/products', payload)).data,
@@ -184,13 +176,6 @@ export default function Products() {
 
     if (editing) {
       updateMutation({ id: editing.id, payload });
-      variants.forEach(variant => {
-        if ('id' in variant) {
-          updateVariantMutation({ variantId: (variant as any).id, variant });
-        } else {
-          createVariantMutation({ productId: editing.id, variant });
-        }
-      });
     } else {
       createMutation(payload);
     }
@@ -243,24 +228,41 @@ export default function Products() {
       </div>
 
       <Modal open={open} title={editing ? 'Edit Product' : 'Add Product'} onClose={() => { setOpen(false); setEditing(null); }}>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="grid md:grid-cols-2 gap-3">
-            <Field name="name" label="Name" defaultValue={editing?.name} />
-            <Field name="price" label="Price" type="number" step="0.01" defaultValue={editing?.price} />
-            {variants.length === 0 && <Field name="stockQuantity" label="Stock" type="number" defaultValue={editing?.stock_quantity} />}
-            <div>
-              <label className="text-sm text-slate-700">Category</label>
-              <select name="categoryId" defaultValue={editing?.category_id} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]">
-                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div className="md:col-span-2">
-              <label className="text-sm text-slate-700">Description</label>
-              <textarea name="description" defaultValue={editing?.description} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 h-24 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]" />
-            </div>
+        <div>
+          <div className="border-b border-slate-200">
+            <nav className="-mb-px flex gap-6 px-4">
+              <button onClick={() => setActiveTab('details')} className={`py-3 px-1 border-b-2 ${activeTab === 'details' ? 'border-[var(--brand)] text-[var(--brand)]' : 'border-transparent text-slate-600 hover:text-slate-800'}`}>Details</button>
+              <button disabled={!editing} onClick={() => setActiveTab('images')} className={`py-3 px-1 border-b-2 ${activeTab === 'images' ? 'border-[var(--brand)] text-[var(--brand)]' : 'border-transparent text-slate-600 hover:text-slate-800'} disabled:opacity-50 disabled:cursor-not-allowed`}>Images</button>
+              <button disabled={!editing} onClick={() => setActiveTab('variants')} className={`py-3 px-1 border-b-2 ${activeTab === 'variants' ? 'border-[var(--brand)] text-[var(--brand)]' : 'border-transparent text-slate-600 hover:text-slate-800'} disabled:opacity-50 disabled:cursor-not-allowed`}>Variants</button>
+            </nav>
           </div>
-          <div className="md:col-span-2">
-            {editing && (
+          <div className="p-4">
+            {activeTab === 'details' && (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field name="name" label="Name" defaultValue={editing?.name} />
+                  <Field name="price" label="Price" type="number" step="0.01" defaultValue={editing?.price} />
+                  {(!editing || !editing.product_variants || editing.product_variants.length === 0) && <Field name="stockQuantity" label="Stock" type="number" defaultValue={editing?.stock_quantity} />}
+                  <div>
+                    <label className="text-sm text-slate-700">Category</label>
+                    <select name="categoryId" defaultValue={editing?.category_id} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]">
+                      {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm text-slate-700">Description</label>
+                  <textarea name="description" defaultValue={editing?.description} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 h-24 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]" />
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button type="button" onClick={() => { setOpen(false); setEditing(null); }} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">Cancel</button>
+                  <button disabled={isCreating || isUpdating} className="px-4 py-2 rounded-lg brand-bg text-white shadow hover:opacity-95 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2">
+                    {isCreating || isUpdating ? <Loading /> : (editing ? 'Save Changes' : 'Create Product')}
+                  </button>
+                </div>
+              </form>
+            )}
+            {activeTab === 'images' && editing && (
               <ImageUploader
                 images={editing.product_images}
                 productId={editing.id}
@@ -269,25 +271,22 @@ export default function Products() {
                 onSetPrimary={(id) => setPrimaryImageMutation(id)}
               />
             )}
+            {activeTab === 'variants' && editing && (
+              <VariantManager
+                productId={editing.id}
+                variants={editing.product_variants}
+                onCreate={(variant) => createVariantMutation({ productId: editing.id, variant })}
+                onUpdate={(variant) => updateVariantMutation({ variantId: (variant as any).id, variant })}
+                onDelete={(id) => deleteVariantMutation(id)}
+                onUpload={(variant, file) => {
+                  if ('id' in variant) {
+                    uploadVariantImageMutation({ variantId: (variant as any).id, file });
+                  }
+                }}
+              />
+            )}
           </div>
-          <div className="md:col-span-2">
-            <VariantManager
-              variants={variants}
-              onVariantsChange={setVariants}
-              onUpload={(variant, file) => {
-                if ('id' in variant) {
-                  uploadVariantImageMutation({ variantId: (variant as any).id, file });
-                }
-              }}
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={() => { setOpen(false); setEditing(null); }} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button disabled={isCreating || isUpdating} className="px-4 py-2 rounded-lg brand-bg text-white shadow hover:opacity-95 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2">
-              {isCreating || isUpdating ? <Loading /> : (editing ? 'Save Changes' : 'Create Product')}
-            </button>
-          </div>
-        </form>
+        </div>
       </Modal>
 
       <ConfirmDialog open={!!confirmDelete} title="Delete Product" onCancel={() => setConfirmDelete(null)} onConfirm={() => { if (confirmDelete) deleteMutation(confirmDelete.id); }} message={<span>Are you sure you want to delete <b>{confirmDelete?.name}</b>? This action cannot be undone.</span>} isPending={isDeleting} />
