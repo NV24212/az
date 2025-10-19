@@ -28,7 +28,7 @@ class Product(SQLModel, table=True):
     stock_quantity: int
     image_url: Optional[str] = None
     category_id: Optional[int] = Field(default=None, foreign_key="category.id")
-    category: Optional[Category] = Relationship(back_populates="products")
+    category: Optional["Category"] = Relationship(back_populates="products")
 
 # --- API Data Transfer Models (DTOs) ---
 # We define separate models for API input and output
