@@ -167,8 +167,6 @@ export default function Products() {
     },
   });
 
-  const [variants, setVariants] = useState<Omit<ProductVariant, 'id' | 'product_id'>[]>([]);
-
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
