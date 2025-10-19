@@ -111,6 +111,7 @@ type LocalVariant = Omit<ProductVariant, 'id' | 'product_id'> & { id: number, im
 
 function ProductForm({ product, categories, onClose }: { product: Product | null, categories: Category[], onClose: () => void }) {
   const qc = useQueryClient();
+  const [activeTab, setActiveTab] = useState('details');
   const [localImages, setLocalImages] = useState<LocalImage[]>([]);
   const [localVariants, setLocalVariants] = useState<LocalVariant[]>([]);
 
@@ -291,55 +292,59 @@ function ProductForm({ product, categories, onClose }: { product: Product | null
   }
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 space-y-4">
-          <Field name="name" label="Product Name" defaultValue={product?.name} placeholder="e.g. T-Shirt" />
-          <div>
-            <label className="text-sm font-medium text-slate-700">Description</label>
-            <textarea name="description" defaultValue={product?.description} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 h-24 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]" placeholder="e.g. A high-quality cotton t-shirt" />
-          </div>
-          <div className="card">
-            <div className="card-padding">
-              <ImageUploader
-                images={product?.product_images || localImages}
-                onUpload={handleUpload}
-                onDelete={product ? (id) => deleteImageMutation(id) : (id) => setLocalImages(prev => prev.filter(img => img.id !== id))}
-                onSetPrimary={product ? (id) => setPrimaryImageMutation(id) : (id) => setLocalImages(prev => prev.map(img => ({ ...img, is_primary: img.id === id })))}
-              />
-            </div>
-          </div>
-          <div className="card">
-            <div className="card-padding">
-              <VariantManager
-                variants={product?.product_variants || localVariants}
-                onCreate={product ? (v) => createVariantMutation(v) : (v) => setLocalVariants(prev => [...prev, { ...v, id: Date.now() }])}
-                onUpdate={product ? (v) => updateVariantMutation(v) : (v) => setLocalVariants(prev => prev.map(pv => pv.id === v.id ? {...pv, ...v} : pv))}
-                onDelete={product ? (id) => deleteVariantMutation(id) : (id) => setLocalVariants(prev => prev.filter(v => v.id !== id))}
-                onUpload={product ? (v, file) => uploadVariantImageMutation({ variantId: v.id!, file }) : (v, file) => setLocalVariants(prev => prev.map(pv => pv.id === v.id ? {...pv, image_file: file, image_url: URL.createObjectURL(file)} : pv))}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <Field name="price" label="Price" type="number" step="0.01" defaultValue={product?.price} placeholder="e.g. 29.99" />
-          {(!product?.product_variants?.length && !localVariants.length) && <Field name="stockQuantity" label="Stock" type="number" defaultValue={product?.stock_quantity} placeholder="e.g. 100" />}
-          <div>
-            <label className="text-sm font-medium text-slate-700">Category</label>
-            <select name="categoryId" defaultValue={product?.category_id} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]">
-              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-        </div>
+    <div>
+      <div className="border-b border-slate-200">
+        <nav className="-mb-px flex gap-6 px-4">
+          <button type="button" onClick={() => setActiveTab('details')} className={`py-3 px-1 border-b-2 ${activeTab === 'details' ? 'border-[var(--brand)] text-[var(--brand)]' : 'border-transparent text-slate-600 hover:text-slate-800'}`}>Details</button>
+          <button type="button" onClick={() => setActiveTab('images')} className={`py-3 px-1 border-b-2 ${activeTab === 'images' ? 'border-[var(--brand)] text-[var(--brand)]' : 'border-transparent text-slate-600 hover:text-slate-800'}`}>Images</button>
+          <button type="button" onClick={() => setActiveTab('variants')} className={`py-3 px-1 border-b-2 ${activeTab === 'variants' ? 'border-[var(--brand)] text-[var(--brand)]' : 'border-transparent text-slate-600 hover:text-slate-800'}`}>Variants</button>
+        </nav>
       </div>
-      <div className="flex justify-end gap-2 pt-4">
-        <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">Cancel</button>
-        <button disabled={isPending} className="px-4 py-2 rounded-lg brand-bg text-white shadow hover:opacity-95 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2">
-          {isPending ? <Loading /> : (product ? 'Save Changes' : 'Create Product')}
-        </button>
+      <div className="p-4">
+        {activeTab === 'details' && (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Field name="name" label="Name" defaultValue={product?.name} />
+              <Field name="price" label="Price" type="number" step="0.01" defaultValue={product?.price} />
+              {(!product?.product_variants?.length && !localVariants.length) && <Field name="stockQuantity" label="Stock" type="number" defaultValue={product?.stock_quantity} />}
+              <div>
+                <label className="text-sm text-slate-700">Category</label>
+                <select name="categoryId" defaultValue={product?.category_id} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]">
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm text-slate-700">Description</label>
+              <textarea name="description" defaultValue={product?.description} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 h-24 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]" />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">Cancel</button>
+              <button disabled={isPending} className="px-4 py-2 rounded-lg brand-bg text-white shadow hover:opacity-95 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2">
+                {isPending ? <Loading /> : (product ? 'Save Changes' : 'Create Product')}
+              </button>
+            </div>
+          </form>
+        )}
+        {activeTab === 'images' && (
+          <ImageUploader
+            images={product?.product_images || localImages}
+            onUpload={handleUpload}
+            onDelete={product ? (id) => deleteImageMutation(id) : (id) => setLocalImages(prev => prev.filter(img => img.id !== id))}
+            onSetPrimary={product ? (id) => setPrimaryImageMutation(id) : (id) => setLocalImages(prev => prev.map(img => ({ ...img, is_primary: img.id === id })))}
+          />
+        )}
+        {activeTab === 'variants' && (
+          <VariantManager
+            variants={product?.product_variants || localVariants}
+            onCreate={product ? (v) => createVariantMutation(v) : (v) => setLocalVariants(prev => [...prev, { ...v, id: Date.now() }])}
+            onUpdate={product ? (v) => updateVariantMutation(v) : (v) => setLocalVariants(prev => prev.map(pv => pv.id === v.id ? {...pv, ...v} : pv))}
+            onDelete={product ? (id) => deleteVariantMutation(id) : (id) => setLocalVariants(prev => prev.filter(v => v.id !== id))}
+            onUpload={product ? (v, file) => uploadVariantImageMutation({ variantId: v.id!, file }) : (v, file) => setLocalVariants(prev => prev.map(pv => pv.id === v.id ? {...pv, image_file: file, image_url: URL.createObjectURL(file)} : pv))}
+          />
+        )}
       </div>
-    </form>
+    </div>
   );
 }
 
