@@ -1,18 +1,18 @@
 from __future__ import annotations
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, model_validator, ConfigDict # <-- IMPORT ConfigDict
 from typing import Dict, Any, Optional
-
-# --- Pydantic Models for Authentication ---
-class AdminLoginRequest(BaseModel):
-    password: str
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
 
 # --- Schemas for PocketBase Records ---
 
-class CategoryBase(BaseModel):
+# Add configuration to handle PocketBase system fields (like created, updated)
+# and allow flexible attribute assignment.
+class PBDictBase(BaseModel):
+    # This configuration tells Pydantic to allow extra fields that don't match
+    # the schema to pass through (but they won't be serialized in the response)
+    # and to allow assignment from attributes (dictionaries).
+    model_config = ConfigDict(extra='ignore', from_attributes=True)
+
+class CategoryBase(PBDictBase): # <-- Inherit from the new PBDictBase
     name: str
 
 class CategoryCreate(CategoryBase):
@@ -26,11 +26,11 @@ class Category(CategoryBase):
     collectionId: str
     collectionName: str
 
-class ProductBase(BaseModel):
+class ProductBase(PBDictBase): # <-- Inherit from the new PBDictBase
     name: str
     description: str | None = None
-    price: float
-    stockQuantity: int
+    price: float # <-- Pydantic will now try harder to coerce the input to float
+    stockQuantity: int # <-- Pydantic will now try harder to coerce the input to int
     imageUrl: str | None = None
 
 class ProductCreate(ProductBase):
@@ -48,40 +48,26 @@ class Product(ProductBase):
     id: str
     collectionId: str
     collectionName: str
-
-    # PocketBase returns categoryId, but Pydantic expects 'category' object
     categoryId: str
     category: Optional[Category] = None
 
     @model_validator(mode='before')
     @classmethod
     def move_expand_to_category(cls, data: Dict[str, Any]) -> Dict[str, Any]:
+        # Safely extract expand data
+        expand_data = data.pop('expand', {})
 
-        # 1. Safely retrieve the 'expand' dictionary, defaulting to empty dict
-        expand_data = data.get('expand', {})
+        if expand_data and isinstance(expand_data, dict):
+            # The key is the relation field name ('categoryId').
+            expanded_category_data = expand_data.get('categoryId')
 
-        # 2. Check if the required expanded field exists in the 'expand' data
-        # If the query was?expand=categoryId, the key in 'expand' is 'categoryId'
-        if 'categoryId' in expand_data:
-
-            # 3. CRITICAL: PocketBase may return a list of records for a one-to-one relation
-            # if maxSelect is 1. Check if it's a list and take the first item, or take the item directly.
-            expanded_category = expand_data['categoryId']
-
-            if isinstance(expanded_category, list) and len(expanded_category) > 0:
-                # If it's a list (maxSelect: 1, but still wrapped in a list)
-                data['category'] = expanded_category
-            elif isinstance(expanded_category, dict):
-                # If it's a single dictionary (the Category object)
-                data['category'] = expanded_category
-            else:
-                # Fail gracefully if data is weirdly structured, leaving 'category' as None
-                data['category'] = None
-
-        # Ensure the original 'categoryId' field is retained for the ID string
-        # and delete the 'expand' key before Pydantic processes the rest
-        if 'expand' in data:
-            del data['expand']
+            if expanded_category_data:
+                # If PocketBase returns a list for a maxSelect=1 field, use the first item.
+                if isinstance(expanded_category_data, list):
+                    data['category'] = expanded_category_data[0] if expanded_category_data else None
+                else:
+                    # If it's a dict (the actual Category record)
+                    data['category'] = expanded_category_data
 
         return data
 
