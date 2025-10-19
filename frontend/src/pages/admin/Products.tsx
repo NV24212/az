@@ -37,7 +37,7 @@ export default function Products() {
   const [variants, setVariants] = useState<Omit<ProductVariant, 'id' | 'product_id'>[]>([]);
 
   useEffect(() => {
-    if (open && editing) {
+    if (open && editing?.product_variants) {
       setVariants(editing.product_variants);
     } else {
       setVariants([]);
@@ -46,11 +46,10 @@ export default function Products() {
 
   const { mutate: createMutation, isPending: isCreating } = useMutation({
     mutationFn: async (payload: Omit<Product, 'id'>) => (await api.post('/api/admin/products', payload)).data,
-    onSuccess: () => {
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['admin-products'] });
-      setOpen(false);
-      setEditing(null);
       toast.success('Product created successfully');
+      setEditing(data);
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.detail || 'Failed to create product');
@@ -223,7 +222,7 @@ export default function Products() {
                     <td className="py-2 pr-4">{p.id}</td>
                     <td className="py-2 pr-4">{p.name}</td>
                     <td className="py-2 pr-4">${p.price}</td>
-                    <td className="py-2 pr-4">{p.stock_quantity}</td>
+                    <td className="py-2 pr-4">{p.stock_quantity ?? '-'}</td>
                     <td className="py-2 pr-4">{categories.find(c => c.id === p.category_id)?.name || p.category_id}</td>
                     <td className="py-2 pr-4">
                       <div className="flex gap-2">
