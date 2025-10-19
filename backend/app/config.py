@@ -6,8 +6,8 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "*"
     SUPABASE_URL: str
     SUPABASE_KEY: str
-    ADMIN_EMAIL: str
-    ADMIN_PASSWORD: str
+    AZHAR_ADMIN_EMAIL: str
+    AZHAR_ADMIN_INITIAL_PASSWORD: str
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
