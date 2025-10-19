@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 from . import services, schemas
 from .dependencies import PBAdminClient
+from .config import settings
 import httpx
+import hmac
 
 # Main router for the API
 router = APIRouter(prefix="/api")
@@ -13,18 +15,27 @@ admin_router = APIRouter(
     dependencies=[Depends(services.get_current_admin_user)]
 )
 
-# --- Authentication Endpoint ---
+# --- Authentication Endpoints ---
 @router.post("/login", response_model=schemas.Token, tags=["Authentication"])
 async def login_for_access_token(form_data: schemas.AdminLoginRequest, pb_client: PBAdminClient):
     """
     Logs in an admin by authenticating with PocketBase, then returns a
     FastAPI-specific JWT access token.
     """
-    # The dependency injection now handles the admin authentication.
-    # We just need to create our own token if the dependency resolved.
     access_token = services.create_access_token(
         data={"sub": form_data.email}
     )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@router.post("/admin/login", response_model=schemas.Token, tags=["Authentication"])
+async def admin_password_login(body: schemas.AdminPasswordLoginRequest):
+    """Single-password admin login used by the frontend."""
+    if not settings.AZHAR_ADMIN_INITIAL_PASSWORD:
+        raise HTTPException(status_code=500, detail="Admin password not configured")
+    if not hmac.compare_digest(body.password, settings.AZHAR_ADMIN_INITIAL_PASSWORD):
+        raise HTTPException(status_code=401, detail="Invalid admin password")
+    subject = settings.AZHAR_ADMIN_EMAIL or "admin"
+    access_token = services.create_access_token(data={"sub": subject})
     return {"access_token": access_token, "token_type": "bearer"}
 
 # --- Public Endpoints ---
