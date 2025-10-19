@@ -1,11 +1,11 @@
-from sqlmodel import Session, select
-from fastapi import Depends, HTTPException
+from supabase import Client
+from fastapi import Depends
 from jose import jwt
 from datetime import datetime, timedelta, timezone
 
 from . import schemas
 from .config import settings
-from .db import get_session
+from .supabase_client import get_supabase_client
 
 # --- Authentication Service ---
 
@@ -21,58 +21,40 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
 
 # --- Category Services ---
 
-def get_categories(session: Session = Depends(get_session)) -> list[schemas.Category]:
-    return session.exec(select(schemas.Category)).all()
+def get_categories(supabase: Client = Depends(get_supabase_client)) -> list[schemas.Category]:
+    response = supabase.table("category").select("*").execute()
+    return response.data
 
-def get_category(category_id: int, session: Session = Depends(get_session)) -> schemas.Category | None:
-    return session.get(schemas.Category, category_id)
+def get_category(category_id: int, supabase: Client = Depends(get_supabase_client)) -> schemas.Category | None:
+    response = supabase.table("category").select("*").eq("id", category_id).execute()
+    return response.data[0] if response.data else None
 
-def create_category(category: schemas.CategoryCreate, session: Session = Depends(get_session)) -> schemas.Category:
-    db_category = schemas.Category.model_validate(category)
-    session.add(db_category)
-    session.commit()
-    session.refresh(db_category)
-    return db_category
+def create_category(category: schemas.CategoryCreate, supabase: Client = Depends(get_supabase_client)) -> schemas.Category:
+    response = supabase.table("category").insert(category.model_dump()).execute()
+    return response.data[0]
 
-def delete_category(category_id: int, session: Session = Depends(get_session)) -> bool:
-    category = session.get(schemas.Category, category_id)
-    if not category:
-        return False
-    session.delete(category)
-    session.commit()
-    return True
+def delete_category(category_id: int, supabase: Client = Depends(get_supabase_client)) -> bool:
+    response = supabase.table("category").delete().eq("id", category_id).execute()
+    return bool(response.data)
 
 # --- Product Services ---
 
-def get_products(session: Session = Depends(get_session)) -> list[schemas.Product]:
-    return session.exec(select(schemas.Product)).all()
+def get_products(supabase: Client = Depends(get_supabase_client)) -> list[schemas.Product]:
+    response = supabase.table("product").select("*, category(*)").execute()
+    return response.data
 
-def get_product(product_id: int, session: Session = Depends(get_session)) -> schemas.Product | None:
-    return session.get(schemas.Product, product_id)
+def get_product(product_id: int, supabase: Client = Depends(get_supabase_client)) -> schemas.Product | None:
+    response = supabase.table("product").select("*, category(*)").eq("id", product_id).execute()
+    return response.data[0] if response.data else None
 
-def create_product(product: schemas.ProductCreate, session: Session = Depends(get_session)) -> schemas.Product:
-    db_product = schemas.Product.model_validate(product)
-    session.add(db_product)
-    session.commit()
-    session.refresh(db_product)
-    return db_product
+def create_product(product: schemas.ProductCreate, supabase: Client = Depends(get_supabase_client)) -> schemas.Product:
+    response = supabase.table("product").insert(product.model_dump()).execute()
+    return response.data[0]
 
-def update_product(product_id: int, product: schemas.ProductUpdate, session: Session = Depends(get_session)) -> schemas.Product | None:
-    db_product = session.get(schemas.Product, product_id)
-    if not db_product:
-        return None
-    product_data = product.model_dump(exclude_unset=True)
-    for key, value in product_data.items():
-        setattr(db_product, key, value)
-    session.add(db_product)
-    session.commit()
-    session.refresh(db_product)
-    return db_product
+def update_product(product_id: int, product: schemas.ProductUpdate, supabase: Client = Depends(get_supabase_client)) -> schemas.Product | None:
+    response = supabase.table("product").update(product.model_dump(exclude_unset=True)).eq("id", product_id).execute()
+    return response.data[0] if response.data else None
 
-def delete_product(product_id: int, session: Session = Depends(get_session)) -> bool:
-    product = session.get(schemas.Product, product_id)
-    if not product:
-        return False
-    session.delete(product)
-    session.commit()
-    return True
+def delete_product(product_id: int, supabase: Client = Depends(get_supabase_client)) -> bool:
+    response = supabase.table("product").delete().eq("id", product_id).execute()
+    return bool(response.data)
