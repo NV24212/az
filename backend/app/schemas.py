@@ -7,6 +7,9 @@ class AdminLoginRequest(BaseModel):
     email: str
     password: str
 
+class AdminPasswordLoginRequest(BaseModel):
+    password: str
+
 class Token(BaseModel):
     access_token: str
     token_type: str
