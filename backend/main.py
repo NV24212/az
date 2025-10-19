@@ -6,6 +6,7 @@ from app.logging_config import setup_logging
 from app.dependencies import get_pocketbase_admin_client
 from app.collection_schemas import PRODUCTS_SCHEMA, CATEGORIES_SCHEMA
 from app.errors import global_exception_handler
+from app.seeding import seed_database
 import asyncio
 
 setup_logging()
@@ -26,9 +27,12 @@ async def ensure_collections_exist():
 
     await pb_client.create_collection(CATEGORIES_SCHEMA)
     await pb_client.create_collection(PRODUCTS_SCHEMA)
+    await seed_database(pb_client)
 
 # Determine the allowed origins for CORS based on the settings.
-if settings.CORS_ORIGINS == "*":
+# For local development and debugging, it's often useful to allow all origins.
+# In a production environment, this should be a comma-separated list of specific domains.
+if not settings.CORS_ORIGINS or settings.CORS_ORIGINS == "*":
     allow_origins = ["*"]
 else:
     allow_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",")]
