@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { api } from '@/lib/api';
 import ProductCard from '@/components/ProductCard';
 import Loading from '@/components/ui/Loading';
-import ProductCardSkeleton from '@/components/ProductCardSkeleton';
+import ProductCardSkeleton from '@/components/ui/ProductCardSkeleton';
 import QueryProvider from '@/components/QueryProvider';
 
 type Category = {
