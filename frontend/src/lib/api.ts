@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { getToken } from './auth'
 
-export const API_BASE = import.meta.env.VITE_API_BASE || 'https://api.azhar.store'
+export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://api.azhar.store'
 
 export const api = axios.create({ baseURL: API_BASE })
 

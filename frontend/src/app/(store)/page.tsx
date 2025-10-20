@@ -1,9 +1,11 @@
+'use client';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { api } from '../lib/api';
-import ProductCard from '../components/ProductCard';
-import Loading from '../components/ui/Loading';
-import ProductCardSkeleton from '../components/ProductCardSkeleton';
+import { api } from '@/lib/api';
+import ProductCard from '@/components/ProductCard';
+import Loading from '@/components/ui/Loading';
+import ProductCardSkeleton from '@/components/ProductCardSkeleton';
+import QueryProvider from '@/components/QueryProvider';
 
 type Category = {
   id: string;
@@ -19,7 +21,7 @@ type Product = {
   category?: Category;
 };
 
-export default function Store() {
+function StorePage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const { data: products, isLoading: isLoadingProducts } = useQuery<Product[]>({
@@ -45,7 +47,7 @@ export default function Store() {
     <div>
       <div className="flex justify-center mb-10">
         <div className="flex gap-2 bg-white p-1.5 rounded-full shadow-sm">
-          <button onClick={() => setSelectedCategory(null)} className={`px-5 py-2 text-sm font-semibold rounded-full ${!selectedCategory ? 'brand-bg text-white' : 'text-slate-600 hover:bg-slate-100 transition-colors'}`}>All Products</button>
+          <button onClick={() => setSelectedCategory(null)} className={`px-5 py-2 text-sm font-semibold rounded-full ${!selectedCategory ? 'bg-brand text-white' : 'text-gray-600 hover:bg-gray-100 transition-colors'}`}>All Products</button>
           {isLoadingCategories ? (
             <div className="flex items-center justify-center px-5">
               <Loading />
@@ -57,8 +59,8 @@ export default function Store() {
                 onClick={() => setSelectedCategory(category.id)}
                 className={`px-5 py-2 text-sm font-medium rounded-full ${
                   selectedCategory === category.id
-                    ? "brand-bg text-white"
-                    : "text-slate-600 hover:bg-slate-100 transition-colors"
+                    ? "bg-brand text-white"
+                    : "text-gray-600 hover:bg-gray-100 transition-colors"
                 }`}
               >
                 {category.name}
@@ -82,4 +84,12 @@ export default function Store() {
       )}
     </div>
   );
+}
+
+export default function Store() {
+    return (
+        <QueryProvider>
+            <StorePage />
+        </QueryProvider>
+    )
 }

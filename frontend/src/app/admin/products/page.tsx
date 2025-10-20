@@ -1,20 +1,22 @@
+'use client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { produce } from 'immer';
-import { api } from '../../lib/api';
-import Modal from '../../components/ui/Modal';
-import ConfirmDialog from '../../components/ui/ConfirmDialog';
-import Loading from '../../components/ui/Loading';
-import ImageUploader from '../../components/ui/ImageUploader';
-import VariantManager from '../../components/ui/VariantManager';
+import { api } from '@/lib/api';
+import Modal from '@/components/ui/Modal';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import Loading from '@/components/ui/Loading';
+import ImageUploader from '@/components/ui/ImageUploader';
+import VariantManager from '@/components/ui/VariantManager';
+import QueryProvider from '@/components/QueryProvider';
 
 type ProductImage = { id: number; product_id: number; image_url: string; is_primary: boolean; created_at: string };
 type ProductVariant = { id: number; product_id: number; name: string; stock_quantity: number; image_url?: string };
 type Category = { id: number; name: string };
 type Product = { id: number; name: string; description?: string; price: number; stock_quantity: number | null; category_id: number; category: Category, product_images: ProductImage[]; product_variants: ProductVariant[] };
 
-export default function Products() {
+function ProductsPage() {
   const qc = useQueryClient();
 
   const { data: products = [], isLoading: isLoadingProducts } = useQuery<Product[]>({
@@ -54,18 +56,20 @@ export default function Products() {
   }
 
   return (
-    <div className="card">
-      <div className="card-padding">
-        <div className="mb-4 flex items-center justify-between">
+    <div className="bg-white rounded-lg shadow">
+      <div className="p-4 border-b border-border">
+        <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Products</h2>
-          <button onClick={() => { setEditing(null); setOpen(true); }} className="brand-bg text-white rounded-lg px-4 py-2 font-medium shadow hover:opacity-95 active:scale-[0.98] transition-all">Add Product</button>
+          <button onClick={() => { setEditing(null); setOpen(true); }} className="bg-brand text-white rounded-lg px-4 py-2 font-medium shadow hover:opacity-95 active:scale-[0.98] transition-all">Add Product</button>
         </div>
+      </div>
+      <div className="p-4">
         {isLoadingProducts || isLoadingCategories ? (
           <div className="h-96 flex items-center justify-center"><Loading /></div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="text-left text-slate-600">
+              <thead className="text-left text-gray-600">
                 <tr>
                   <th className="py-2 pr-4 font-semibold">ID</th>
                   <th className="py-2 pr-4 font-semibold">Name</th>
@@ -77,7 +81,7 @@ export default function Products() {
               </thead>
               <tbody>
                 {products.map((p, i) => (
-                  <tr key={p.id} className={i % 2 ? 'bg-slate-50' : ''}>
+                  <tr key={p.id} className={i % 2 ? 'bg-gray-50' : ''}>
                     <td className="py-2 pr-4">{p.id}</td>
                     <td className="py-2 pr-4">{p.name}</td>
                     <td className="py-2 pr-4">${p.price}</td>
@@ -85,7 +89,7 @@ export default function Products() {
                     <td className="py-2 pr-4">{p.category?.name || '-'}</td>
                     <td className="py-2 pr-4">
                       <div className="flex gap-2">
-                        <button onClick={() => handleEdit(p)} className="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">Edit</button>
+                        <button onClick={() => handleEdit(p)} className="px-3 py-1.5 rounded-lg border border-border text-text hover:bg-gray-100">Edit</button>
                         <button onClick={() => setConfirmDelete(p)} className="px-3 py-1.5 rounded-lg border border-red-300 text-red-700 hover:bg-red-50">Delete</button>
                       </div>
                     </td>
@@ -293,11 +297,11 @@ function ProductForm({ product, categories, onClose }: { product: Product | null
 
   return (
     <div>
-      <div className="border-b border-slate-200">
+      <div className="border-b border-border">
         <nav className="-mb-px flex gap-6 px-4">
-          <button type="button" onClick={() => setActiveTab('details')} className={`py-3 px-1 border-b-2 ${activeTab === 'details' ? 'border-[var(--brand)] text-[var(--brand)]' : 'border-transparent text-slate-600 hover:text-slate-800'}`}>Details</button>
-          <button type="button" onClick={() => setActiveTab('images')} className={`py-3 px-1 border-b-2 ${activeTab === 'images' ? 'border-[var(--brand)] text-[var(--brand)]' : 'border-transparent text-slate-600 hover:text-slate-800'}`}>Images</button>
-          <button type="button" onClick={() => setActiveTab('variants')} className={`py-3 px-1 border-b-2 ${activeTab === 'variants' ? 'border-[var(--brand)] text-[var(--brand)]' : 'border-transparent text-slate-600 hover:text-slate-800'}`}>Variants</button>
+          <button type="button" onClick={() => setActiveTab('details')} className={`py-3 px-1 border-b-2 ${activeTab === 'details' ? 'border-brand text-brand' : 'border-transparent text-text hover:text-gray-800'}`}>Details</button>
+          <button type="button" onClick={() => setActiveTab('images')} className={`py-3 px-1 border-b-2 ${activeTab === 'images' ? 'border-brand text-brand' : 'border-transparent text-text hover:text-gray-800'}`}>Images</button>
+          <button type="button" onClick={() => setActiveTab('variants')} className={`py-3 px-1 border-b-2 ${activeTab === 'variants' ? 'border-brand text-brand' : 'border-transparent text-text hover:text-gray-800'}`}>Variants</button>
         </nav>
       </div>
       <div className="p-4">
@@ -308,19 +312,19 @@ function ProductForm({ product, categories, onClose }: { product: Product | null
               <Field name="price" label="Price" type="number" step="0.01" defaultValue={product?.price} />
               {(!product?.product_variants?.length && !localVariants.length) && <Field name="stockQuantity" label="Stock" type="number" defaultValue={product?.stock_quantity} />}
               <div>
-                <label className="text-sm text-slate-700">Category</label>
-                <select name="categoryId" defaultValue={product?.category_id} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]">
+                <label className="text-sm text-text">Category</label>
+                <select name="categoryId" defaultValue={product?.category_id} className="mt-1 w-full rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand">
                   {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
             </div>
             <div>
-              <label className="text-sm text-slate-700">Description</label>
-              <textarea name="description" defaultValue={product?.description} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 h-24 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]" />
+              <label className="text-sm text-text">Description</label>
+              <textarea name="description" defaultValue={product?.description} className="mt-1 w-full rounded-lg border border-border px-3 py-2 h-24 focus:outline-none focus:ring-2 focus:ring-brand" />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">Cancel</button>
-              <button disabled={isPending} className="px-4 py-2 rounded-lg brand-bg text-white shadow hover:opacity-95 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2">
+              <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-border text-text hover:bg-gray-100">Cancel</button>
+              <button disabled={isPending} className="px-4 py-2 rounded-lg bg-brand text-white shadow hover:opacity-95 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2">
                 {isPending ? <Loading /> : (product ? 'Save Changes' : 'Create Product')}
               </button>
             </div>
@@ -358,8 +362,16 @@ function Field(props: React.ComponentProps<'input'> & { label: string }) {
     }
     return (
       <label className="block">
-        <span className="text-sm font-medium text-slate-700">{label}</span>
-        <input {...props} name={name} type={type} onFocus={handleFocus} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]" />
+        <span className="text-sm font-medium text-text">{label}</span>
+        <input {...props} name={name} type={type} onFocus={handleFocus} className="mt-1 w-full rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand" />
       </label>
     );
   }
+
+export default function Products() {
+    return (
+        <QueryProvider>
+            <ProductsPage />
+        </QueryProvider>
+    )
+}
