@@ -351,6 +351,7 @@ export default function ProductsPage() {
                         placeholder="0.00"
                         {...field}
                         onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                        value={isNaN(field.value) ? "" : field.value}
                       />
                     </FormControl>
                     <FormMessage />
@@ -396,6 +397,7 @@ export default function ProductsPage() {
                         placeholder="0"
                         {...field}
                         onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                        value={isNaN(field.value) ? "" : field.value}
                       />
                     </FormControl>
                     <FormMessage />
