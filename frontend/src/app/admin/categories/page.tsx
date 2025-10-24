@@ -47,34 +47,15 @@ type Category = {
   id: string
   name: string
   description: string
-  createdAt: string
+  created_at: string
 }
-
-const mockCategories: Category[] = [
-  {
-    id: "1",
-    name: "Electronics",
-    description: "Gadgets and devices.",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    name: "Apparel",
-    description: "Clothing and accessories.",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "3",
-    name: "Home Goods",
-    description: "Items for your home.",
-    createdAt: new Date().toISOString(),
-  },
-]
 
 const categorySchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
 })
+
+const API_URL = "https://api.azhar.store/api"
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([])
@@ -86,56 +67,107 @@ export default function CategoriesPage() {
     null
   )
 
-  const form = useForm<z.infer<typeof categorySchema>>({
+  const form = useForm({
     resolver: zodResolver(categorySchema),
   })
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setCategories(mockCategories)
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch(`${API_URL}/categories`)
+      if (!response.ok) throw new Error("Failed to fetch categories")
+      const data = await response.json()
+      setCategories(data)
+    } catch (error) {
+      toast.error("Failed to fetch categories")
+    } finally {
       setIsLoading(false)
-    }, 1500)
-    return () => clearTimeout(timer)
+    }
+  }
+
+  useEffect(() => {
+    fetchCategories()
   }, [])
 
-  const handleCreateCategory = (values: z.infer<typeof categorySchema>) => {
-    const newCategory: Category = {
-      id: (categories.length + 1).toString(),
-      ...values,
-      description: values.description || "",
-      createdAt: new Date().toISOString(),
+  const getAuthToken = () => {
+    return localStorage.getItem("token")
+  }
+
+  const handleCreateCategory = async (
+    values: z.infer<typeof categorySchema>
+  ) => {
+    try {
+      const token = getAuthToken()
+      const response = await fetch(`${API_URL}/admin/categories`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(values),
+      })
+
+      if (!response.ok) throw new Error("Failed to create category")
+
+      fetchCategories()
+      setIsCreateDialogOpen(false)
+      toast.success("Category created successfully!")
+    } catch (error) {
+      toast.error("Failed to create category")
     }
-    setCategories([...categories, newCategory])
-    setIsCreateDialogOpen(false)
-    toast.success("Category created successfully!")
   }
 
-  const handleEditCategory = (values: z.infer<typeof categorySchema>) => {
+  const handleEditCategory = async (
+    values: z.infer<typeof categorySchema>
+  ) => {
     if (!selectedCategory) return
 
-    const updatedCategories = categories.map((category) =>
-      category.id === selectedCategory.id
-        ? {
-            ...category,
-            ...values,
-            description: values.description || "",
-          }
-        : category
-    )
-    setCategories(updatedCategories)
-    setIsEditDialogOpen(false)
-    toast.success("Category updated successfully!")
+    try {
+      const token = getAuthToken()
+      const response = await fetch(
+        `${API_URL}/admin/categories/${selectedCategory.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(values),
+        }
+      )
+
+      if (!response.ok) throw new Error("Failed to update category")
+
+      fetchCategories()
+      setIsEditDialogOpen(false)
+      toast.success("Category updated successfully!")
+    } catch (error) {
+      toast.error("Failed to update category")
+    }
   }
 
-  const handleDeleteCategory = () => {
+  const handleDeleteCategory = async () => {
     if (!selectedCategory) return
 
-    const updatedCategories = categories.filter(
-      (category) => category.id !== selectedCategory.id
-    )
-    setCategories(updatedCategories)
-    setIsDeleteDialogOpen(false)
-    toast.success("Category deleted successfully!")
+    try {
+      const token = getAuthToken()
+      const response = await fetch(
+        `${API_URL}/admin/categories/${selectedCategory.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      if (!response.ok) throw new Error("Failed to delete category")
+
+      fetchCategories()
+      setIsDeleteDialogOpen(false)
+      toast.success("Category deleted successfully!")
+    } catch (error) {
+      toast.error("Failed to delete category")
+    }
   }
 
   const openEditDialog = (category: Category) => {
@@ -219,15 +251,24 @@ export default function CategoriesPage() {
         </CardContent>
       </Card>
 
-      {/* Create Category Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+      {/* Create/Edit Category Dialog */}
+      <Dialog
+        open={isCreateDialogOpen || isEditDialogOpen}
+        onOpenChange={
+          isCreateDialogOpen ? setIsCreateDialogOpen : setIsEditDialogOpen
+        }
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Create Category</DialogTitle>
+            <DialogTitle>
+              {isCreateDialogOpen ? "Create Category" : "Edit Category"}
+            </DialogTitle>
           </DialogHeader>
           <Form {...form}>
             <form
-              onSubmit={form.handleSubmit(handleCreateCategory)}
+              onSubmit={form.handleSubmit(
+                isCreateDialogOpen ? handleCreateCategory : handleEditCategory
+              )}
               className="space-y-4"
             >
               <FormField
@@ -260,55 +301,9 @@ export default function CategoriesPage() {
                 )}
               />
               <DialogFooter>
-                <Button type="submit">Create</Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Category Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Edit Category</DialogTitle>
-          </DialogHeader>
-          <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(handleEditCategory)}
-              className="space-y-4"
-            >
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Category name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Category description"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button type="submit">Save Changes</Button>
+                <Button type="submit">
+                  {isCreateDialogOpen ? "Create" : "Save Changes"}
+                </Button>
               </DialogFooter>
             </form>
           </Form>
