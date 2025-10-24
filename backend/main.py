@@ -11,14 +11,9 @@ app = FastAPI(title="AzharStore API", version="0.1.0")
 
 app.add_exception_handler(Exception, global_exception_handler)
 
-if not settings.CORS_ORIGINS or settings.CORS_ORIGINS == "*":
-    allow_origins = ["*"]
-else:
-    allow_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",")]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allow_origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

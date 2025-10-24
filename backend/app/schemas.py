@@ -64,14 +64,3 @@ class ProductUpdate(BaseModel):
     stock_quantity: Optional[int] = None
     category_id: Optional[int] = None
 
-class Order(BaseModel):
-    id: int
-    customer_name: str
-    total: float
-    status: str
-
-class Customer(BaseModel):
-    id: int
-    name: str
-    email: str
-    phone: str

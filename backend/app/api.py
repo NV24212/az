@@ -111,19 +111,6 @@ def set_primary_image(image_id: int, supabase: Client = Depends(get_supabase_cli
         raise HTTPException(status_code=404, detail="Image not found")
     return image
 
-@admin_router.get("/orders", response_model=List[schemas.Order], tags=["Admin - Orders"])
-def admin_list_orders(supabase: Client = Depends(get_supabase_client)):
-    return [
-        {"id": 1, "customer_name": "John Doe", "total": 100, "status": "Pending"},
-        {"id": 2, "customer_name": "Jane Doe", "total": 200, "status": "Shipped"},
-    ]
-
-@admin_router.get("/customers", response_model=List[schemas.Customer], tags=["Admin - Customers"])
-def admin_list_customers(supabase: Client = Depends(get_supabase_client)):
-    return [
-        {"id": 1, "name": "John Doe", "email": "jhon@doe.com", "phone": "123-456-7890"},
-        {"id": 2, "name": "Jane Doe", "email": "jane@doe.com", "phone": "098-765-4321"},
-    ]
 
 @admin_router.post("/products/{product_id}/variants", response_model=schemas.ProductVariant, tags=["Admin - Products"])
 def create_variant(product_id: int, variant: schemas.ProductVariantCreate, supabase: Client = Depends(get_supabase_client)):
