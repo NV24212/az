@@ -87,6 +87,13 @@ export default function ProductsPage() {
 
   const form = useForm({
     resolver: zodResolver(productSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      price: 0,
+      category_id: "",
+      stock_quantity: 0,
+    },
   })
 
   const fetchProducts = async () => {
