@@ -50,6 +50,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
+import { ProductNumberFormField } from "@/components/product-form-fields"
 
 type Category = {
   id: string
@@ -339,24 +340,11 @@ export default function ProductsPage() {
                   </FormItem>
                 )}
               />
-              <FormField
+              <ProductNumberFormField
                 control={form.control}
                 name="price"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Price</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="0.00"
-                        {...field}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                        value={isNaN(field.value) ? "" : field.value}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                label="Price"
+                placeholder="0.00"
               />
               <FormField
                 control={form.control}
@@ -385,24 +373,11 @@ export default function ProductsPage() {
                   </FormItem>
                 )}
               />
-              <FormField
+              <ProductNumberFormField
                 control={form.control}
                 name="stock_quantity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Stock</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="0"
-                        {...field}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                        value={isNaN(field.value) ? "" : field.value}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                label="Stock"
+                placeholder="0"
               />
               <DialogFooter>
                 <Button type="submit">
